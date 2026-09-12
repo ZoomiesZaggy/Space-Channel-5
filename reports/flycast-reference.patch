@@ -1,0 +1,317 @@
+diff --git a/core/audio/audiobackend_sdl2.cpp b/core/audio/audiobackend_sdl2.cpp
+index 7396f59..5750a24 100644
+--- a/core/audio/audiobackend_sdl2.cpp
++++ b/core/audio/audiobackend_sdl2.cpp
+@@ -8,6 +8,10 @@
+ #include <algorithm>
+ #include <atomic>
+ #include <mutex>
++#include <cstdio>
++#include <cstdlib>
++#include <fstream>
++#include <vector>
+ 
+ class SDLAudioBackend : AudioBackend
+ {
+@@ -18,6 +22,16 @@ class SDLAudioBackend : AudioBackend
+ 	uint32_t *sample_buffer;
+ 	unsigned sample_buffer_size = 0;
+ 	unsigned sample_count = 0;
++	bool playback_started = false;
++	unsigned callback_frames = 1024;
++	struct Timing { uint64_t counter, first; unsigned frames, queued; char kind; };
++	std::vector<Timing> timing;
++	bool trace = false;
++	uint64_t submitted_frames = 0, consumed_frames = 0;
++	uint64_t silent_start_frames = 0, silent_start_counter = 0;
++	bool defer_silence = false, heard_sound = false;
++	uint64_t played_frames = 0, underrun_frames = 0, underrun_callbacks = 0, dropped_frames = 0;
++	uint64_t started_ms = 0, first_underrun_ms = 0, last_underrun_ms = 0, steady_played_frames = 0, steady_underrun_frames = 0, producer_wait_ms = 0;
+ 	SDL_AudioCVT audioCvt;
+ 
+ 	SDL_AudioDeviceID recorddev {};
+@@ -33,9 +47,18 @@ class SDLAudioBackend : AudioBackend
+ 		// Wait until there's enough samples to feed the kraken
+ 		unsigned oslen = len / sizeof(uint32_t);
+ 		unsigned islen = backend->needs_resampling ? std::ceil(oslen / backend->audioCvt.len_ratio) : oslen;
++		const uint64_t elapsed_ms = SDL_GetTicks64() - backend->started_ms;
++		if (backend->trace && backend->timing.size() < 1000000)
++			backend->timing.push_back({SDL_GetPerformanceCounter(), backend->consumed_frames, islen, backend->sample_count,
++				backend->sample_count < islen ? 'U' : 'C'});
+ 
+ 		if (backend->sample_count < islen)
+ 		{
++			backend->underrun_frames += oslen;
++			if (!backend->underrun_callbacks) backend->first_underrun_ms = elapsed_ms;
++			backend->last_underrun_ms = elapsed_ms;
++			if (elapsed_ms >= 5000) backend->steady_underrun_frames += oslen;
++			backend->underrun_callbacks++;
+ 			// No data, just output a bit of silence for the underrun
+ 			memset(stream, 0, len);
+ 			backend->stream_mutex.unlock();
+@@ -43,6 +66,8 @@ class SDLAudioBackend : AudioBackend
+ 			return;
+ 		}
+ 
++		backend->played_frames += oslen;
++		if (elapsed_ms >= 5000) backend->steady_played_frames += oslen;
+ 		if (!backend->needs_resampling) {
+ 			// Just copy bytes for this case.
+ 			memcpy(stream, &backend->sample_buffer[0], len);
+@@ -59,6 +84,7 @@ class SDLAudioBackend : AudioBackend
+ 		// Move samples in the buffer and consume them
+ 		memmove(&backend->sample_buffer[0], &backend->sample_buffer[islen], (backend->sample_count - islen) * sizeof(uint32_t));
+ 		backend->sample_count -= islen;
++		backend->consumed_frames += islen;
+ 
+ 		backend->stream_mutex.unlock();
+ 		backend->read_wait.Set();
+@@ -81,6 +107,16 @@ public:
+ 		sample_buffer_size = std::max<u32>(SAMPLE_COUNT * 2, config::AudioBufferSize);
+ 		sample_buffer = new uint32_t[sample_buffer_size]();
+ 		sample_count = 0;
++		playback_started = false;
++		trace = std::getenv("SC5_AUDIO_TIMING_CSV") != nullptr;
++		timing.clear(); if (trace) timing.reserve(1000000);
++		submitted_frames = consumed_frames = 0;
++		silent_start_frames = silent_start_counter = 0;
++		defer_silence = std::getenv("SC5_DEFER_SILENT_AUDIO") != nullptr;
++		heard_sound = false;
++		played_frames = underrun_frames = underrun_callbacks = dropped_frames = 0;
++		started_ms = SDL_GetTicks64();
++		first_underrun_ms = last_underrun_ms = steady_played_frames = steady_underrun_frames = producer_wait_ms = 0;
+ 
+ 		// Support 44.1KHz (native) but also upsampling to 48KHz
+ 		SDL_AudioSpec wav_spec, out_spec;
+@@ -88,7 +124,15 @@ public:
+ 		wav_spec.freq = 44100;
+ 		wav_spec.format = AUDIO_S16;
+ 		wav_spec.channels = 2;
+-		wav_spec.samples = SAMPLE_COUNT * 2;  // Must be power of two
++		// Short callbacks reduce the size of producer wake-up bursts without
++		// enlarging the application's audio buffer or changing generated PCM.
++		callback_frames = 256;
++		if (const char *value = std::getenv("SC5_AUDIO_CALLBACK_FRAMES")) {
++			const unsigned requested = std::strtoul(value, nullptr, 10);
++			if (requested >= 128 && requested <= 1024 && (requested & (requested - 1)) == 0)
++				callback_frames = requested;
++		}
++		wav_spec.samples = callback_frames;  // Must be power of two
+ 		wav_spec.callback = audioCallback;
+ 		wav_spec.userdata = this;
+ 		needs_resampling = false;
+@@ -100,6 +144,7 @@ public:
+ 			INFO_LOG(AUDIO, "SDL2: SDL_OpenAudioDevice failed: %s", SDL_GetError());
+ 			needs_resampling = true;
+ 			wav_spec.freq = 48000;
++			wav_spec.samples = SAMPLE_COUNT * 2; // Preserve the existing fallback converter cadence.
+ 			audiodev = SDL_OpenAudioDevice(NULL, 0, &wav_spec, &out_spec, 0);
+ 			if (audiodev == 0)
+ 				ERROR_LOG(AUDIO, "SDL2: SDL_OpenAudioDevice failed: %s", SDL_GetError());
+@@ -120,13 +165,35 @@ public:
+ 			}
+ 		}
+ 
++		if (audiodev && std::getenv("SC5_LOG_AUDIO"))
++			std::printf("Native SDL audio driver=%s callback_frames=%u callback_ms=%.6f capacity_frames=%u capacity_ms=%.6f\n",
++				SDL_GetCurrentAudioDriver(), out_spec.samples, out_spec.samples * 1000.0 / out_spec.freq,
++				sample_buffer_size, sample_buffer_size * 1000.0 / 44100);
+ 		return audiodev != 0;
+ 	}
+ 
+ 	u32 push(const void* frame, u32 samples, bool wait) override
+ 	{
++		// Initial all-zero device output is paced without starting the audio
++		// callback. Never skip a block containing sound, or silence after sound.
++		if (defer_silence && !heard_sound) {
++			const auto *input = static_cast<const uint32_t *>(frame);
++			heard_sound = std::any_of(input, input + samples, [](uint32_t sample){return sample != 0;});
++			if (!heard_sound) {
++				if (!silent_start_counter) silent_start_counter = SDL_GetPerformanceCounter();
++				silent_start_frames += samples;
++				if (wait) {
++					const uint64_t target = silent_start_counter + silent_start_frames * SDL_GetPerformanceFrequency() / 44100;
++					while (SDL_GetPerformanceCounter() < target) SDL_Delay(1);
++				}
++				if (trace && timing.size() < 1000000)
++					timing.push_back({SDL_GetPerformanceCounter(), submitted_frames, samples, 0, 'S'});
++				submitted_frames += samples; consumed_frames += samples;
++				return 1;
++			}
++		}
+ 		// Unpause the device shall it be paused.
+-		if (SDL_GetAudioDeviceStatus(audiodev) != SDL_AUDIO_PLAYING)
++		if (playback_started && SDL_GetAudioDeviceStatus(audiodev) != SDL_AUDIO_PLAYING)
+ 			SDL_PauseAudioDevice(audiodev, 0);
+ 
+ 		// If wait, then wait for the buffer to be smaller than a certain size.
+@@ -134,7 +201,9 @@ public:
+ 		if (wait) {
+ 			while (sample_count + samples > sample_buffer_size) {
+ 				stream_mutex.unlock();
++				const uint64_t before_wait = SDL_GetTicks64();
+ 				read_wait.Wait();
++				producer_wait_ms += SDL_GetTicks64() - before_wait;
+ 				stream_mutex.lock();
+ 			}
+ 		}
+@@ -142,9 +211,19 @@ public:
+ 		// Copy as many samples as possible, drop any remaining (this should not happen usually)
+ 		unsigned free_samples = sample_buffer_size - sample_count;
+ 		unsigned tocopy = samples < free_samples ? samples : free_samples;
++		dropped_frames += samples - tocopy;
+ 		memcpy(&sample_buffer[sample_count], frame, tocopy * sizeof(uint32_t));
+ 		sample_count += tocopy;
++		if (trace && timing.size() < 1000000)
++			timing.push_back({SDL_GetPerformanceCounter(), submitted_frames, tocopy, sample_count, 'P'});
++		submitted_frames += tocopy;
++		// Prime the existing buffer before starting the device. Round down to
++		// whole producer batches so startup cannot wait on a paused callback.
++		const unsigned startup_frames = (sample_buffer_size / SAMPLE_COUNT) * SAMPLE_COUNT;
++		const bool start_playback = !playback_started && sample_count >= startup_frames;
++		if (start_playback) playback_started = true;
+ 		stream_mutex.unlock();
++		if (start_playback) SDL_PauseAudioDevice(audiodev, 0);
+ 
+ 		return 1;
+ 	}
+@@ -160,6 +239,21 @@ public:
+ 			audiodev = SDL_AudioDeviceID();
+ 		}
+ 		delete [] sample_buffer;
++		if (trace) {
++			std::ofstream out(std::getenv("SC5_AUDIO_TIMING_CSV"));
++			out << "kind,qpc,first_frame,frames,queued_frames,frequency\n";
++			for (const auto &entry : timing)
++				out << entry.kind << ',' << entry.counter << ',' << entry.first << ',' << entry.frames << ',' << entry.queued << ',' << SDL_GetPerformanceFrequency() << '\n';
++		}
++		if (std::getenv("SC5_LOG_AUDIO")) {
++			std::printf("Native SDL audio paced_initial_silence_frames=%llu\n", static_cast<unsigned long long>(silent_start_frames));
++			std::printf("Native SDL audio played_frames=%llu underrun_frames=%llu underrun_callbacks=%llu dropped_frames=%llu output_hz=%u\n",
++				static_cast<unsigned long long>(played_frames), static_cast<unsigned long long>(underrun_frames),
++				static_cast<unsigned long long>(underrun_callbacks), static_cast<unsigned long long>(dropped_frames), needs_resampling ? 48000u : 44100u);
++			std::printf("Native SDL audio warmup_ms=5000 steady_played_frames=%llu steady_underrun_frames=%llu first_underrun_ms=%llu last_underrun_ms=%llu producer_wait_ms=%llu\n",
++				static_cast<unsigned long long>(steady_played_frames), static_cast<unsigned long long>(steady_underrun_frames),
++				static_cast<unsigned long long>(first_underrun_ms), static_cast<unsigned long long>(last_underrun_ms), static_cast<unsigned long long>(producer_wait_ms));
++		}
+ 		sample_buffer = nullptr;
+ 		if (needs_resampling)
+ 		{
+diff --git a/core/hw/bba/rtl8139c.cpp b/core/hw/bba/rtl8139c.cpp
+index 51ea904..9d1a0c5 100644
+--- a/core/hw/bba/rtl8139c.cpp
++++ b/core/hw/bba/rtl8139c.cpp
+@@ -49,6 +49,7 @@
+ 
+ /* For crc32 */
+ #include <zlib.h>
++#include <stdlib.h> // SC5 reference build, 2026-09-11: explicit allocation declarations.
+ #include "rtl8139c.h"
+ #include "serialize.h"
+ #include "hw/sh4/sh4_sched.h"
+diff --git a/core/oslib/oslib.cpp b/core/oslib/oslib.cpp
+index 9d308df..2c969e2 100644
+--- a/core/oslib/oslib.cpp
++++ b/core/oslib/oslib.cpp
+@@ -485,8 +485,10 @@ void os_TermInput()
+ #endif
+ }
+ 
++void (*os_InputUpdateOverride)();
+ void os_UpdateInputState()
+ {
++	if (os_InputUpdateOverride != nullptr) { os_InputUpdateOverride(); return; }
+ 	FC_PROFILE_SCOPE;
+ 
+ 	GamepadDevice::RampAnalog();
+diff --git a/core/oslib/oslib.h b/core/oslib/oslib.h
+index e55fffe..f904db9 100644
+--- a/core/oslib/oslib.h
++++ b/core/oslib/oslib.h
+@@ -1,7 +1,7 @@
+ #pragma once
+ #include "types.h"
+ #include <vector>
+-#if defined(__SWITCH__)
++#if defined(__SWITCH__) || defined(_WIN32) // SC5 reference: declare Windows aligned allocation.
+ #include <malloc.h>
+ #endif
+ 
+@@ -11,6 +11,8 @@ void os_DestroyWindow();
+ void os_SetupInput();
+ void os_TermInput();
+ void os_UpdateInputState();
++// Optional standalone native host input callback; null preserves normal input.
++extern void (*os_InputUpdateOverride)();
+ void os_InstallFaultHandler();
+ void os_UninstallFaultHandler();
+ void os_RunInstance(int argc, const char *argv[]);
+diff --git a/core/rend/gles/gles.cpp b/core/rend/gles/gles.cpp
+index aaecb6c..1a8ffa9 100644
+--- a/core/rend/gles/gles.cpp
++++ b/core/rend/gles/gles.cpp
+@@ -20,6 +20,7 @@
+ #include <cmath>
+ #include <memory>
+ 
++
+ #ifdef GLES
+ #ifndef GL_RED
+ #define GL_RED                            0x1903
+@@ -1055,7 +1056,9 @@ void OpenGLRenderer::drawOSD()
+ {
+ 	drawVmusAndCrosshairs(width, height);
+ #ifndef LIBRETRO
+-	gui_display_osd();
++	// A native/headless host has no emulator overlay or ImGui driver.
++	if (imguiDriver != nullptr)
++		gui_display_osd();
+ #endif
+ }
+ 
+diff --git a/core/rend/gles/gles.h b/core/rend/gles/gles.h
+index 9082a5d..dd32de9 100755
+--- a/core/rend/gles/gles.h
++++ b/core/rend/gles/gles.h
+@@ -521,7 +521,9 @@ struct OpenGLRenderer : Renderer
+ 		if (!frameRendered || clearLastFrame)
+ 			return false;
+ #ifndef LIBRETRO
+-		imguiDriver->setFrameRendered();
++		// Native/headless hosts can present or capture without the emulator UI.
++		if (imguiDriver != nullptr)
++			imguiDriver->setFrameRendered();
+ #endif
+ 		frameRendered = false;
+ 		return true;
+diff --git a/core/rend/texconv.h b/core/rend/texconv.h
+index cbaa2cf..6472a59 100644
+--- a/core/rend/texconv.h
++++ b/core/rend/texconv.h
+@@ -15,6 +15,7 @@
+     along with Flycast.  If not, see <https://www.gnu.org/licenses/>.
+ */
+ #pragma once
++#include <stdlib.h> // SC5 reference build: explicit allocation declarations.
+ #include "types.h"
+ 
+ constexpr int VQ_CODEBOOK_SIZE = 256 * 8;
+diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
+index 76157ba..49fd21c 100644
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -1,4 +1,5 @@
+ option(BUILD_GMOCK "Builds the googlemock subproject" OFF)
++target_sources(${PROJECT_NAME} PRIVATE "${SC5_NATIVE_TEST_SOURCE}")
+ option(INSTALL_GTEST "Enable installation of googletest. (Projects embedding googletest may want to turn this OFF.)" OFF)
+ if(WIN32)
+     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+@@ -16,7 +17,7 @@ target_sources(${PROJECT_NAME} PRIVATE
+         src/AicaArmTest.cpp
+         src/Sh4InterpreterTest.cpp
+         src/MmuTest.cpp
+-        src/HttpTest.cpp
++        # SC5 reference build: HTTP tests require unavailable curl headers; CPU tests retained.
+         src/IniFileTest.cpp
+         src/hw/modem/v42Test.cpp
+         src/hw/modem/v42bisTest.cpp
