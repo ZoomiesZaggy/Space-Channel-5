@@ -5,7 +5,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $sc5Project = (Resolve-Path "$PSScriptRoot\..").Path
-$sc5Workspace = (Resolve-Path "$PSScriptRoot\..\..\..").Path
+$sc5Workspace = $sc5Project
 $sc5Compiler = (Get-ChildItem "$sc5Workspace\work\toolchain\*\bin\clang.exe").FullName
 $sc5Reference = "$sc5Workspace\work\flycast-build\flycast.exe"
 $env:PATH = (Split-Path $sc5Compiler) + ';' + $env:PATH
