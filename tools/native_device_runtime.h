@@ -16,7 +16,8 @@
 #include "serialize.h"
 #include "stdclass.h"
 #include "native_state.h"
-#include <windows.h>
+#include "native_host_os.h"
+#include <SDL_loadso.h>
 #include <fstream>
 #include <iterator>
 #include <vector>
@@ -119,8 +120,8 @@ static void retire(u32 opcode,u32 slot,u32 count){
  nativeCycles.executeCycles((u16)opcode);if(count==2)nativeCycles.executeCycles((u16)slot);
  clockBoundary(opcode,slot,count);
 }
-static void configureNativeFastClock(HMODULE library){
- auto attach=(void(*)(NativeFastClock*))GetProcAddress(library,"sc5_set_fast_clock");
+static void configureNativeFastClock(void * library){
+ auto attach=(void(*)(NativeFastClock*))SDL_LoadFunction(library,"sc5_set_fast_clock");
  if(attach){
   const bool enabled=std::getenv("SC5_DISABLE_FAST_CLOCK")==nullptr;
   attach(enabled?nativeCycles.fastClock(clockBoundary):nullptr);
@@ -159,40 +160,40 @@ static void saveNativeFullCheckpoint(const char *checkpointPath,u32 module){
  pushContext();Serializer measure;dc_serialize(measure);std::vector<u8> serialized(measure.size());Serializer writer(serialized.data(),serialized.size());dc_serialize(writer);serialized.resize(writer.size());
  NativeFullCheckpointHeader saved{0x53433545u,module,serialized.size(),*nativeContext};const auto cycleState=nativeCycles.snapshot();std::string temporary=std::string(checkpointPath)+".tmp";
  {std::ofstream checkpoint(temporary,std::ios::binary);checkpoint.write(reinterpret_cast<const char*>(&saved),sizeof(saved));checkpoint.write(reinterpret_cast<const char*>(&cycleState),sizeof(cycleState));checkpoint.write(reinterpret_cast<const char*>(serialized.data()),serialized.size());nativeRequire(bool(checkpoint.good()),"checkpoint write");}
- nativeRequire(bool(MoveFileExA(temporary.c_str(),checkpointPath,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)),"checkpoint atomic replace");
+ nativeRequire(bool(nativeReplaceFile(temporary.c_str(),checkpointPath)),"checkpoint atomic replace");
  std::cout<<"Saved full native checkpoint="<<checkpointPath<<" module="<<module<<" bytes="<<serialized.size()<<"\n";
 }
 static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
  const char *dllPath=std::getenv("SC5_NATIVE_DLL");const char *imagePath=std::getenv("SC5_IMAGE");
  nativeRequire((dllPath)!=(nullptr),"ASSERT_NE dllPath");nativeRequire((imagePath)!=(nullptr),"ASSERT_NE imagePath");
  std::ifstream input(imagePath,std::ios::binary);std::vector<unsigned char> image((std::istreambuf_iterator<char>(input)),{});nativeRequire((image.size())==(0x260000u),"ASSERT_EQ image.size()");
- HMODULE library=LoadLibraryA(dllPath);nativeRequire((library)!=(nullptr),"ASSERT_NE library");
- std::vector<HMODULE> moduleLibraries{library};
- struct Cleanup{std::vector<HMODULE> &libraries;~Cleanup(){clockActive=false;os_InputUpdateOverride=nullptr;nativeInput=nullptr;nativeContext=nullptr;nativeState=nullptr;for(auto it=libraries.rbegin();it!=libraries.rend();++it)FreeLibrary(*it);}} cleanup{moduleLibraries};
- HMODULE preloadedModules[5]{};
+ void * library=SDL_LoadObject(dllPath);nativeRequire((library)!=(nullptr),"ASSERT_NE library");
+ std::vector<void *> moduleLibraries{library};
+ struct Cleanup{std::vector<void *> &libraries;~Cleanup(){clockActive=false;os_InputUpdateOverride=nullptr;nativeInput=nullptr;nativeContext=nullptr;nativeState=nullptr;for(auto it=libraries.rbegin();it!=libraries.rend();++it)SDL_UnloadObject(*it);}} cleanup{moduleLibraries};
+ void * preloadedModules[5]{};
  // Map the existing native modules before audio starts, avoiding DLL loading
  // stalls when the original game replaces its round executable during play.
  if(const char *directory=std::getenv("SC5_MODULE_DLL_DIR")){
   if(!std::getenv("SC5_LAZY_MODULES")){
-   const ULONGLONG started=GetTickCount64();u32 count=0;
+   const uint64_t started=nativeMilliseconds();u32 count=0;
    for(u32 module=1;module<=4;module++){
-    const std::string path=std::string(directory)+"/native-diff-round"+std::to_string(module)+".dll";
-    if(GetFileAttributesA(path.c_str())==INVALID_FILE_ATTRIBUTES)continue;
-    HMODULE loaded=LoadLibraryA(path.c_str());nativeRequire(loaded,"native round module preload");
+    const std::string path=std::string(directory)+"/native-diff-round"+std::to_string(module)+nativeLibrarySuffix();
+    if(!nativePathExists(path.c_str()))continue;
+    void * loaded=SDL_LoadObject(path.c_str());nativeRequire(loaded,"native round module preload");
     preloadedModules[module]=loaded;moduleLibraries.push_back(loaded);count++;
    }
-   std::cout<<"Preloaded native AOT modules="<<count<<" load_ms="<<(GetTickCount64()-started)<<"\n";
+   std::cout<<"Preloaded native AOT modules="<<count<<" load_ms="<<(nativeMilliseconds()-started)<<"\n";
   }
  }
- auto reset=(void(*)(const unsigned char*))GetProcAddress(library,"sc5_reset");
- auto run=(void(*)(u32))GetProcAddress(library,"sc5_run");
- auto runChunk=(u32(*)(u32))GetProcAddress(library,"sc5_run_chunk");
- nativeState=(u32(*)(u32))GetProcAddress(library,"sc5_state");
- auto useBus=(void(*)(unsigned char*,u32(*)(u32,u32),void(*)(u32,u32,u32)))GetProcAddress(library,"sc5_use_bus");
- auto attachBus=(void(*)(unsigned char*,u32(*)(u32,u32),void(*)(u32,u32,u32)))GetProcAddress(library,"sc5_attach_bus");
- auto context=(State*(*)())GetProcAddress(library,"sc5_context");auto setRetire=(void(*)(void(*)(u32,u32,u32)))GetProcAddress(library,"sc5_set_retire");
- auto setService=(void(*)(int(*)(u32)))GetProcAddress(library,"sc5_set_service");
- auto setQueueWrite=(void(*)(void(*)(u32)))GetProcAddress(library,"sc5_set_queue_write");
+ auto reset=(void(*)(const unsigned char*))SDL_LoadFunction(library,"sc5_reset");
+ auto run=(void(*)(u32))SDL_LoadFunction(library,"sc5_run");
+ auto runChunk=(u32(*)(u32))SDL_LoadFunction(library,"sc5_run_chunk");
+ nativeState=(u32(*)(u32))SDL_LoadFunction(library,"sc5_state");
+ auto useBus=(void(*)(unsigned char*,u32(*)(u32,u32),void(*)(u32,u32,u32)))SDL_LoadFunction(library,"sc5_use_bus");
+ auto attachBus=(void(*)(unsigned char*,u32(*)(u32,u32),void(*)(u32,u32,u32)))SDL_LoadFunction(library,"sc5_attach_bus");
+ auto context=(State*(*)())SDL_LoadFunction(library,"sc5_context");auto setRetire=(void(*)(void(*)(u32,u32,u32)))SDL_LoadFunction(library,"sc5_set_retire");
+ auto setService=(void(*)(int(*)(u32)))SDL_LoadFunction(library,"sc5_set_service");
+ auto setQueueWrite=(void(*)(void(*)(u32)))SDL_LoadFunction(library,"sc5_set_queue_write");
  nativeRequire(bool(reset&&run&&nativeState&&useBus&&attachBus&&context&&setRetire),"reset&&run&&nativeState&&useBus&&attachBus&&context&&setRetire");
  nativeRequire(bool(addrspace::reserve()),"addrspace::reserve()");emu.init();mem_map_default();emu.dc_reset(true);
  config::AudioVolume.set(nativeNumber("SC5_VOLUME",100,0,100));
@@ -288,15 +289,15 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
  if(hostTimingPath)hostTiming.reserve(1000000);
  u32 chunkLimit=100000;
  if(const char *value=std::getenv("SC5_CHUNK_INSTRUCTIONS"))chunkLimit=std::clamp<u32>(std::stoul(value),10000,1000000);
- const char *stopPath=std::getenv("SC5_STOP_FILE");ULONGLONG lastStopPoll=GetTickCount64();
+ const char *stopPath=std::getenv("SC5_STOP_FILE");uint64_t lastStopPoll=nativeMilliseconds();
  auto switchModule=[&](u32 module){
   const char *directory=std::getenv("SC5_MODULE_DLL_DIR");nativeRequire(directory,"SC5_MODULE_DLL_DIR");
   nativeRequire(module>=1&&module<=4,"valid round module");
-  HMODULE next=preloadedModules[module];
-  if(!next){std::string path=std::string(directory)+"/native-diff-round"+std::to_string(module)+".dll";next=LoadLibraryA(path.c_str());nativeRequire(next,"round module DLL");preloadedModules[module]=next;moduleLibraries.push_back(next);}
-  auto nextAttach=(void(*)(unsigned char*,u32(*)(u32,u32),void(*)(u32,u32,u32)))GetProcAddress(next,"sc5_attach_bus");
-  auto nextRunChunk=(u32(*)(u32))GetProcAddress(next,"sc5_run_chunk");auto nextState=(u32(*)(u32))GetProcAddress(next,"sc5_state");auto nextContext=(State*(*)())GetProcAddress(next,"sc5_context");
-  auto nextSetRetire=(void(*)(void(*)(u32,u32,u32)))GetProcAddress(next,"sc5_set_retire");auto nextSetService=(void(*)(int(*)(u32)))GetProcAddress(next,"sc5_set_service");auto nextSetQueue=(void(*)(void(*)(u32)))GetProcAddress(next,"sc5_set_queue_write");
+  void * next=preloadedModules[module];
+  if(!next){std::string path=std::string(directory)+"/native-diff-round"+std::to_string(module)+nativeLibrarySuffix();next=SDL_LoadObject(path.c_str());nativeRequire(next,"round module DLL");preloadedModules[module]=next;moduleLibraries.push_back(next);}
+  auto nextAttach=(void(*)(unsigned char*,u32(*)(u32,u32),void(*)(u32,u32,u32)))SDL_LoadFunction(next,"sc5_attach_bus");
+  auto nextRunChunk=(u32(*)(u32))SDL_LoadFunction(next,"sc5_run_chunk");auto nextState=(u32(*)(u32))SDL_LoadFunction(next,"sc5_state");auto nextContext=(State*(*)())SDL_LoadFunction(next,"sc5_context");
+  auto nextSetRetire=(void(*)(void(*)(u32,u32,u32)))SDL_LoadFunction(next,"sc5_set_retire");auto nextSetService=(void(*)(int(*)(u32)))SDL_LoadFunction(next,"sc5_set_service");auto nextSetQueue=(void(*)(void(*)(u32)))SDL_LoadFunction(next,"sc5_set_queue_write");
   nativeRequire(bool(nextAttach&&nextRunChunk&&nextState&&nextContext&&nextSetRetire&&nextSetService),"round module exports");
   State snapshot=*nativeContext;snapshot.fault=0;nextAttach(GetMemPtr(0x8c000000,0x1000000),readDevice,writeDevice);*nextContext()=snapshot;
   nextSetRetire(retire);configureNativeFastClock(next);nextSetService(nativeService);if(nextSetQueue)nextSetQueue(nativeQueueWrite);
@@ -333,9 +334,9 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
   }
   if(completed==0)break;
   if(surface)inputHost->events();
-  if(stopPath&&GetTickCount64()-lastStopPoll>=100){
-   lastStopPoll=GetTickCount64();
-   if(GetFileAttributesA(stopPath)!=INVALID_FILE_ATTRIBUTES){std::cout<<"Native graceful stop requested by file="<<stopPath<<"\n";break;}
+  if(stopPath&&nativeMilliseconds()-lastStopPoll>=100){
+   lastStopPoll=nativeMilliseconds();
+   if(nativePathExists(stopPath)){std::cout<<"Native graceful stop requested by file="<<stopPath<<"\n";break;}
   }
  }
  nativeDispatchTrace.finish(startTicks);

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
+#include "native_host_os.h"
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -30,7 +31,7 @@ inline void loadNativeSettings(const std::filesystem::path &path){
   auto eq=line.find('=');if(eq==std::string::npos)throw std::runtime_error("Malformed settings line");
   auto name=nativeTrim(line.substr(0,eq)),value=nativeTrim(line.substr(eq+1));
   auto found=names.find(name);if(found==names.end())throw std::runtime_error("Unknown setting: "+name);
-  if(!value.empty()&&!std::getenv(found->second.c_str()))_putenv_s(found->second.c_str(),value.c_str());
+  if(!value.empty()&&!std::getenv(found->second.c_str()))nativeSetEnvironment(found->second.c_str(),value.c_str());
  }
  nativeNumber("SC5_RHYTHM_OFFSET_MS",0,-250,250);
  nativeNumber("SC5_VOLUME",100,0,100);nativeNumber("SC5_FULLSCREEN",0,0,1);

@@ -28,3 +28,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python tools/test_native_calibration.py --compiler c++
+      - run: python tools/test_native_host_os.py --compiler c++

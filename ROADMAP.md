@@ -12,6 +12,7 @@ This tracks the requested progression toward a polished PC port. It does not cla
 - Optional texture replacement through the existing renderer.
 - Experimental native mod ABI with compatibility checks, RAM access and lifecycle/frame callbacks (see NATIVE-MODS.md).
 - Source-only CI checks and settings persistence tests.
+- Portable host environment, monotonic clock, checkpoint replacement and SDL module loading; Windows/POSIX protected-texture write handling. This is infrastructure, not a completed Linux/macOS game port.
 
 ## Completed acceptance
 

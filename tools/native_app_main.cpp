@@ -11,13 +11,13 @@ int main(int argc,char **argv){
   SDL_SetMainReady();
   std::cout<<std::unitbuf;
   if(argc==2&&std::string(argv[1])=="--latency-test")return runNativeLatencyProbe();
-  struct AwakeGuard{AwakeGuard(){SetThreadExecutionState(ES_CONTINUOUS|ES_SYSTEM_REQUIRED);}~AwakeGuard(){SetThreadExecutionState(ES_CONTINUOUS);}} awake;
+  NativeAwakeGuard awake;
   std::cout<<std::unitbuf;
   NativeCpuPlacement cpuPlacement;
   auto root=std::filesystem::absolute(argv[0]).parent_path().parent_path();
   if(!std::getenv("SC5_IGNORE_SETTINGS"))loadNativeSettings(root/"userdata/settings.ini");
-  auto defaultEnv=[](const char *name,const std::string &value){if(!std::getenv(name))_putenv_s(name,value.c_str());};
-  defaultEnv("SC5_NATIVE_DLL",(root/"build/native-diff.dll").string());
+  auto defaultEnv=[](const char *name,const std::string &value){if(!std::getenv(name))nativeSetEnvironment(name,value.c_str());};
+  defaultEnv("SC5_NATIVE_DLL",(root/(std::string("build/native-diff")+nativeLibrarySuffix())).string());
   defaultEnv("SC5_MODULE_DLL_DIR",(root/"build").string());
   defaultEnv("SC5_IMAGE",(root/"extracted/1ST_READ.BIN").string());
   defaultEnv("SC5_RUNTIME_DATA",(root/"userdata").string()+"/");
@@ -36,10 +36,10 @@ int main(int argc,char **argv){
      <<"Normal play has no instruction limit; --budget sets a diagnostic limit (0 means unlimited).\n"
      <<"Controls: Enter=Start, arrows=direction pad, Z/Space=A, X/Backspace=B, A=X, S=Y; SDL gamepad supported.\n";return 0;
    }
-   if(option=="--hidden"){_putenv_s("SC5_VISIBLE","");continue;}
-   if(option=="--silent"){_putenv_s("SC5_PLAY_AUDIO","");continue;}
+   if(option=="--hidden"){nativeSetEnvironment("SC5_VISIBLE","");continue;}
+   if(option=="--silent"){nativeSetEnvironment("SC5_PLAY_AUDIO","");continue;}
    auto found=options.find(option);if(found==options.end()||j+1==argc)throw std::runtime_error("Unknown or incomplete option: "+option);
-   std::string value=argv[++j];if(option=="--data")value+="/";_putenv_s(found->second,value.c_str());
+   std::string value=argv[++j];if(option=="--data")value+="/";nativeSetEnvironment(found->second,value.c_str());
   }
   if(!std::getenv("SC5_GDI"))throw std::runtime_error("Specify the original Space Channel 5 USA disc with --gdi <path>");
   std::filesystem::create_directories(std::getenv("SC5_RUNTIME_DATA"));

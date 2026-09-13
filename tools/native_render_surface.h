@@ -7,7 +7,8 @@
 #include "rend/TexCache.h"
 #include "rend/CustomTexture.h"
 #include "rend/gles/gles.h"
-#include <windows.h>
+#include "native_texture_write_watch.h"
+#include <memory>
 #include <SDL.h>
 #include <fstream>
 #include <iostream>
@@ -18,15 +19,10 @@
 class NativeRenderSurface final : public GLGraphicsContext {
  SDL_Window *surface=nullptr;
  SDL_GLContext context=nullptr;
- PVOID textureWriteHandler=nullptr;
+ std::unique_ptr<NativeTextureWriteWatch> textureWriteHandler;
  Uint64 firstPresent=0,lastPresent=0;
  std::vector<double> frameIntervals;
- static LONG WINAPI textureWriteFault(EXCEPTION_POINTERS *exception){
-  auto *record=exception->ExceptionRecord;
-  if(record->ExceptionCode==EXCEPTION_ACCESS_VIOLATION && record->NumberParameters>=2 && record->ExceptionInformation[0]==1 &&
-     VramLockedWrite(reinterpret_cast<u8*>(record->ExceptionInformation[1])))return EXCEPTION_CONTINUE_EXECUTION;
-  return EXCEPTION_CONTINUE_SEARCH;
- }
+
 public:
  NativeRenderSurface():GLGraphicsContext(nullptr,nullptr){
   std::cout<<"Render surface: SDL initialization"<<std::endl;
@@ -52,7 +48,7 @@ public:
   if(std::getenv("SC5_QUAD_PRESENT"))gl.bogusBlitFramebuffer=true;
   // Texture caching protects VRAM pages. Handle only writes to those pages;
   // unrelated access violations remain real faults, with no CPU/JIT fallback.
-  textureWriteHandler=AddVectoredExceptionHandler(1,textureWriteFault);
+  textureWriteHandler=std::make_unique<NativeTextureWriteWatch>([](unsigned char *address){return VramLockedWrite(address);});
   if(!textureWriteHandler)throw std::runtime_error("Texture write tracking initialization failed");
   std::cout<<"Render surface: ready"<<std::endl;
  }
@@ -67,7 +63,7 @@ public:
      <<" max_ms="<<frameIntervals.back()<<" over_50_ms="<<slow<<"\n";
   }
   rend_term_renderer();
-  if(textureWriteHandler)RemoveVectoredExceptionHandler(textureWriteHandler);
+  textureWriteHandler.reset();
   if(context)SDL_GL_DeleteContext(context);if(surface)SDL_DestroyWindow(surface);
   SDL_QuitSubSystem(SDL_INIT_VIDEO);
  }
