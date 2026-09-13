@@ -20,10 +20,12 @@ std::string getScreenshotsPath(){
   return paths.count?[[paths objectAtIndex:0] UTF8String]:".";
  }
 }
+}
 namespace i18n {
 std::string getSystemLocale(){
  @autoreleasepool {
   NSArray *languages=[NSLocale preferredLanguages];
   return languages.count?[[languages objectAtIndex:0] UTF8String]:"en";
  }
+}
 }
