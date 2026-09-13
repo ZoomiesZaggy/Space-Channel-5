@@ -2,7 +2,7 @@ name: Downloadable desktop builds
 on:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write # GitHub requires write access to read unpublished draft assets.
 jobs:
   package:
     strategy:
