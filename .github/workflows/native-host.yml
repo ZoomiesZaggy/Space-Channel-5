@@ -1,0 +1,25 @@
+name: Native desktop host
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libgl1-mesa-dev libasound2-dev libpulse-dev libudev-dev libusb-1.0-0-dev libcurl4-openssl-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxss-dev libxxf86vm-dev
+      - name: macOS build dependencies
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - run: python tools/build_native_port.py --jobs 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-host-${{ runner.os }}-${{ runner.arch }}
+          path: work/native-port-build/sc5-native-dev
