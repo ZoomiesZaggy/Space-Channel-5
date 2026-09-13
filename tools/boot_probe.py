@@ -144,7 +144,7 @@ RUNTIME=r'''
 #include <stdlib.h>
 #include <string.h>
 #include <fenv.h>
-#include <xmmintrin.h>
+#include "../tools/native_fp_control.h"
 #include <math.h>
 #pragma STDC FENV_ACCESS ON
 #define OPTIONAL static inline __attribute__((unused))
@@ -195,15 +195,9 @@ static Service external_service;
 typedef void (*QueueWrite)(u32);
 static QueueWrite external_queue_write __attribute__((unused));
 static u32 deferred_code_guard;
-/* Windows x64 scalar arithmetic uses SSE. Save and restore MXCSR directly;
-   the generic MinGW fenv API also synchronizes x87 on every guest operation. */
-static unsigned native_fp_begin(void){
- unsigned previous=_mm_getcsr();
- _mm_setcsr((previous&~0x603fu)|((s.fpscr&1u)?0x6000u:0u));
- return previous;
-}
-static int native_fp_flags(void){return (_mm_getcsr()&0x20u)?FE_INEXACT:0;}
-static void native_fp_end(unsigned previous){_mm_setcsr(previous);}
+static NativeFpState native_fp_begin(void){return nativeFpBegin(s.fpscr);}
+static int native_fp_flags(void){return nativeFpFlags();}
+static void native_fp_end(NativeFpState previous){nativeFpEnd(previous);}
 /* Restricted single precision arithmetic. Unsupported exceptional values trap
    rather than silently substituting host-specific SH4 exception behavior. */
 OPTIONAL void float_arithmetic(u32 n,u32 m,u32 kind){
@@ -213,7 +207,7 @@ OPTIONAL void float_arithmetic(u32 n,u32 m,u32 kind){
   if(kind==4){s.t=x==y;s.fpscr&=~0x3f000u;return;}
   if(kind==5){s.t=x>y;s.fpscr&=~0x3f000u;return;}
   if(kind>3){s.fault=11;return;}
-  unsigned previous=native_fp_begin();
+  NativeFpState previous=native_fp_begin();
   volatile double result;switch(kind){case 0:result=x+y;break;case 1:result=x-y;break;case 2:result=x*y;break;default:result=x/y;break;}
   int flags=native_fp_flags();double value=result;native_fp_end(previous);(void)flags;set_dr(n>>1,value);s.fpscr&=~0x3f000u;return;
  }
@@ -221,7 +215,7 @@ OPTIONAL void float_arithmetic(u32 n,u32 m,u32 kind){
  u32 a=s.fr[n],b=s.fr[m];
  float x,y;memcpy(&x,&a,4);memcpy(&y,&b,4);
  if(kind>=4){s.t=kind==4?x==y:x>y;s.fpscr&=~0x3f000u;return;}
- unsigned previous=native_fp_begin();
+ NativeFpState previous=native_fp_begin();
  volatile float result;
  switch(kind){case 0:result=x+y;break;case 1:result=x-y;break;case 2:result=x*y;break;default:result=x/y;break;}
  int flags=native_fp_flags();float value=result;native_fp_end(previous);
@@ -236,7 +230,7 @@ OPTIONAL void float_convert(u32 n,u32 kind){
  if((s.fpscr&3u)>1u){s.fault=11;return;}
  if(kind==2){
   if(s.fpscr&0x80000u){set_dr(n>>1,(double)(int32_t)s.fpul);return;}
-  unsigned previous=native_fp_begin();
+  NativeFpState previous=native_fp_begin();
   volatile float result=(float)(int32_t)s.fpul;int flags=native_fp_flags();float value=result;native_fp_end(previous);
   (void)flags;s.fpscr&=~0x3f000u;if(flags&FE_INEXACT)s.fpscr|=0x1004u;memcpy(&s.fr[n],&value,4);return;
  }
@@ -262,7 +256,7 @@ OPTIONAL void float_transform(u32 n){
   u32 bits=j<4?s.fr[n+j]:s.xf[j-4];
   if(j<4)memcpy(&vector[j],&bits,4);else memcpy(&matrix[j-4],&bits,4);
  }
- unsigned previous=native_fp_begin();
+ NativeFpState previous=native_fp_begin();
  for(u32 row=0;row<4;row++){
   double sum=(double)matrix[row]*vector[0]+(double)matrix[row+4]*vector[1]+(double)matrix[row+8]*vector[2]+(double)matrix[row+12]*vector[3];
   result[row]=(float)sum;
@@ -290,7 +284,7 @@ OPTIONAL void float_inner(u32 n,u32 m){
   u32 a=s.fr[n+j],b=s.fr[m+j];
   memcpy(x+j,&a,4);memcpy(y+j,&b,4);
  }
- unsigned previous=native_fp_begin();
+ NativeFpState previous=native_fp_begin();
  double sum=(double)x[0]*y[0];for(u32 j=1;j<4;j++)sum+=(double)x[j]*y[j];volatile float converted=(float)sum;
  int flags=native_fp_flags();float result=converted;native_fp_end(previous);
  (void)flags;
@@ -304,7 +298,7 @@ OPTIONAL void float_precision(u32 n,u32 to_single){
   double result=value;uint64_t encoded;memcpy(&encoded,&result,8);s.fr[n]=(u32)(encoded>>32);s.fr[n+1]=(u32)encoded;s.fpscr&=~0x3f000u;
  }else{
   uint64_t bits=((uint64_t)s.fr[n]<<32)|s.fr[n+1];double value;memcpy(&value,&bits,8);
-  unsigned previous=native_fp_begin();volatile float converted=(float)value;
+  NativeFpState previous=native_fp_begin();volatile float converted=(float)value;
   int flags=native_fp_flags();float result=converted;native_fp_end(previous);
   (void)flags;
   s.fpscr&=~0x3f000u;if(flags&FE_INEXACT)s.fpscr|=0x1004u;memcpy(&s.fpul,&result,4);
@@ -323,7 +317,7 @@ OPTIONAL void float_extended(u32 n,u32 m,u32 kind){
  if(kind!=1&&values[0]<0){
   volatile float special=sqrtf(values[0]);memcpy(&s.fr[n],&special,4);s.fpscr&=~0x3f000u;return;
  }
- unsigned previous=native_fp_begin();
+ NativeFpState previous=native_fp_begin();
  volatile float result=kind==1?fmaf(values[2],values[1],values[0]):kind==2?1.f/sqrtf(values[0]):sqrtf(values[0]);
  int flags=native_fp_flags();float value=result;native_fp_end(previous);
  (void)flags;

@@ -3,11 +3,14 @@
 No instruction discovery or runtime translation occurs here. The emitted page
 bodies are copied verbatim, apart from external linkage between object files.
 """
-import argparse, concurrent.futures, hashlib, json, pathlib, re, subprocess, time
+import argparse, concurrent.futures, hashlib, json, pathlib, re, subprocess, time, shutil
 from boot_probe import ROOT, RUNTIME
 
 def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=None, math_errno=True):
-    started=time.monotonic(); cc=str(pathlib.Path(cc).resolve())
+    started=time.monotonic(); cc=str(pathlib.Path(shutil.which(str(cc)) or cc).resolve())
+    target=subprocess.check_output([cc,"-dumpmachine"],text=True).strip()
+    windows=any(word in target for word in ("mingw", "windows"))
+    darwin="darwin" in target
     source_file=pathlib.Path(source_path) if source_path else ROOT/'build/sc5-boot-probe.c'
     source=source_file.read_text()
     assert source.startswith(RUNTIME)
@@ -47,13 +50,14 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
     units={'core':exports.replace('#include "sc5-boot-probe.c"',core)}
     units.update({f'pages_{group:x}':'#include "native-shared.h"\n'+''.join(bodies) for group,bodies in groups.items()})
     identity=subprocess.check_output([cc,'--version'],text=True)
-    dependency_hash=hashlib.sha256((ROOT/'tools/native_state.h').read_bytes()+(ROOT/'tools/native_fsca_table.inc').read_bytes()+(ROOT/'tools/native_fast_clock.h').read_bytes()+(ROOT/'tools/native_static_timing.h').read_bytes()).hexdigest()
+    dependency_hash=hashlib.sha256((ROOT/'tools/native_state.h').read_bytes()+(ROOT/'tools/native_fsca_table.inc').read_bytes()+(ROOT/'tools/native_fast_clock.h').read_bytes()+(ROOT/'tools/native_static_timing.h').read_bytes()+(ROOT/'tools/native_fp_control.h').read_bytes()).hexdigest()
     def compile_unit(item):
         name,body=item; path=directory/(name+'.c'); obj=directory/(name+'.obj'); stamp=directory/(name+'.sha256')
-        digest=hashlib.sha256((identity+opt+str(cpu)+str(math_errno)+dependency_hash+header+body).encode()).hexdigest()
+        digest=hashlib.sha256((identity+target+opt+str(cpu)+str(math_errno)+dependency_hash+header+body).encode()).hexdigest()
         if obj.exists() and stamp.exists() and stamp.read_text()==digest:return str(obj),False
         path.write_text(body)
         command=[cc,'-O'+opt,'-std=c99','-c',str(path),'-o',str(obj)]
+        if not windows:command+=['-fPIC']
         if cpu:command+=['-march='+cpu]
         if not math_errno:command+=['-fno-math-errno']
         result=subprocess.run(command,capture_output=True,text=True)
@@ -61,7 +65,8 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
         stamp.write_text(digest);print(f'Compiled {name}',flush=True);return str(obj),True
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
         results=list(pool.map(compile_unit,units.items()))
-    command=[cc,'-shared',*[obj for obj,changed in results],'-o',str(pathlib.Path(output).resolve())]
+    command=[cc,'-dynamiclib' if darwin else '-shared',*[obj for obj,changed in results],'-o',str(pathlib.Path(output).resolve())]
+    if not windows:command+=['-lm']
     result=subprocess.run(command,capture_output=True,text=True)
     if result.returncode:raise RuntimeError(result.stdout+result.stderr)
     report=dict(source_sha256=hashlib.sha256(source.encode()).hexdigest(),pages=len(pages),objects=len(results),compiled_objects=sum(changed for obj,changed in results),seconds=time.monotonic()-started,cpu=cpu,math_errno=math_errno,command=command)

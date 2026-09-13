@@ -2,6 +2,9 @@
 #include "native_host_os.h"
 #include "native_cpu_placement.h"
 #include "native_texture_write_watch.h"
+#include "native_fp_control.h"
+#include <cstring>
+#pragma STDC FENV_ACCESS ON
 #include <fstream>
 #include <iostream>
 #ifndef _WIN32
@@ -54,6 +57,14 @@ static void testWriteWatch(){
 }
 int main(int argc,char **argv){
  require(argc==2);
+ for(uint32_t mode: {0u,1u}){
+  volatile float x=1.0f,y=0x1.8p-23f;
+  const auto saved=nativeFpBegin(mode);
+  volatile float result=x+y;
+  const int flags=nativeFpFlags();float value=result;nativeFpEnd(saved);
+  uint32_t bits;memcpy(&bits,&value,4);
+  require(bits==(mode?0x3f800001u:0x3f800002u));require(flags==FE_INEXACT);
+ }
  testWriteWatch();
  nativeSetEnvironment("SC5_TEST_HOST_ENV","enabled");
  require(std::string(std::getenv("SC5_TEST_HOST_ENV"))=="enabled");

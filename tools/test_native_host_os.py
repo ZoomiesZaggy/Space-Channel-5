@@ -23,7 +23,7 @@ if __name__ == '__main__':
         destination = Path(temporary) / ('contracts.exe' if os.name == 'nt' else 'contracts')
         environment = dict(os.environ, PATH=str(cxx.parent) + os.pathsep + os.environ.get('PATH', ''))
         flags = ['-static'] if os.name == 'nt' else []
-        subprocess.run([str(cxx), '-std=c++17', '-O2', *flags,
+        subprocess.run([str(cxx), '-std=c++17', '-O2', '-frounding-math', *flags,
                         str(ROOT / 'tools/test_native_host_os.cpp'), '-o', str(destination)],
                        env=environment, check=True)
         subprocess.run([str(destination), temporary], env=environment, check=True)
