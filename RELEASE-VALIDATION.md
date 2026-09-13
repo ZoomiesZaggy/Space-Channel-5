@@ -35,4 +35,18 @@ The 64 ms buffer remains the default. The 32 ms option produced more underrun fr
 
 After the repeated comparison, the development PC's per-application NVIDIA profile was set to disable OpenGL threaded optimization for `sc5-native-dev.exe`. This is local to that PC; the launcher does not modify drivers. Other users can evaluate the per-program option in NVIDIA Control Panel and restore its default to undo it. No driver SDK/helper is distributed here.
 
-A roughly 72 ms stall remains. Actual gameplay calibration, physical latency measurement, a full manual playthrough, other PCs, game-aware widescreen, interpolation, executable mods and native Linux/macOS support remain pending.
+## Follow-up: frame timing and native mods
+
+Follow-up frontend SHA-256: `50e2c450b5a7e85e83e6960c6aa22d1357454aa99ad4ec9ceb3256ed17afbcf1`.
+
+Host traces now separate AOT execution from presentation, retaining the original CSV fields and appending `run_end_qpc`. `tools/analyze_host_timing.py` reports the longest intervals and their emulated duration.
+
+Two matched Report 3 traces measured 72.3196 and 72.3351 ms for the longest interval. Both contain exactly 66.79456 ms of emulated time between completed game frames; presentation accounts for 0.5010 and 0.4930 ms. No individual traced chunk exceeded 20 ms in the first run. This is a game/device-side frame-production gap, not evidence of a remaining 72 ms OpenGL call. Whether original hardware drops the same frame is still unverified. Do not change rhythm speed to hide the gap.
+
+The two traced builds preserved captured PCM and all RAM exactly and reported zero audio underruns. Their final images also match each other. Complete serialized checkpoints contain host-dependent state and are not claimed byte-identical across these frontend builds.
+
+An initial native mod interface now provides version/size/game checks, bounded RAM reads and writes, and startup/frame/shutdown callbacks. The example received 326 callbacks in the opening replay, validated read/write bounds with a restored temporary write, and preserved final RAM, PCM and image exactly. An ABI-999 DLL was rejected before its startup callback. See NATIVE-MODS.md for limitations.
+
+Actual gameplay calibration, physical latency measurement, a full manual playthrough, other PCs, game-aware widescreen, interpolation and native Linux/macOS support remain pending.
+
+Final follow-up checks: saved mod selection loaded successfully; missing-export and incompatible-ABI libraries were rejected. The final default Report 3 replay preserved RAM and PCM. Its final image differs in 509 RGB channels, all at x=639 (y=75..336), consistent with the previously recorded right-edge variation. The opening replay with the example mod remains byte-identical in RAM, PCM and image.

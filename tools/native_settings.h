@@ -20,7 +20,7 @@ inline int nativeNumber(const char *name,int fallback,int low,int high){
 inline void loadNativeSettings(const std::filesystem::path &path){
  std::ifstream file(path);if(!file){if(std::filesystem::exists(path))throw std::runtime_error("Cannot read settings");return;}
  const std::map<std::string,std::string> names={
-  {"gdi","SC5_GDI"},{"volume","SC5_VOLUME"},{"audio_buffer_ms","SC5_AUDIO_BUFFER_MS"},{"texture_packs","SC5_TEXTURE_PACKS"},{"fullscreen","SC5_FULLSCREEN"},{"window_scale","SC5_WINDOW_SCALE"},{"vsync","SC5_VSYNC"},
+  {"native_mod","SC5_NATIVE_MOD"},{"gdi","SC5_GDI"},{"volume","SC5_VOLUME"},{"audio_buffer_ms","SC5_AUDIO_BUFFER_MS"},{"texture_packs","SC5_TEXTURE_PACKS"},{"fullscreen","SC5_FULLSCREEN"},{"window_scale","SC5_WINDOW_SCALE"},{"vsync","SC5_VSYNC"},
   {"key_start","SC5_KEY_START"},{"key_up","SC5_KEY_UP"},{"key_down","SC5_KEY_DOWN"},{"key_left","SC5_KEY_LEFT"},{"key_right","SC5_KEY_RIGHT"},
   {"key_a","SC5_KEY_A"},{"key_b","SC5_KEY_B"},{"key_x","SC5_KEY_X"},{"key_y","SC5_KEY_Y"},
   {"pad_start","SC5_PAD_START"},{"pad_up","SC5_PAD_UP"},{"pad_down","SC5_PAD_DOWN"},{"pad_left","SC5_PAD_LEFT"},{"pad_right","SC5_PAD_RIGHT"},

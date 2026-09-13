@@ -41,6 +41,16 @@ class Launcher:
         play, controls = ttk.Frame(tabs, padding=12), ttk.Frame(tabs, padding=12)
         tabs.add(play, text='Play and display')
         tabs.add(controls, text='Controls')
+        mods = ttk.Frame(tabs, padding=12)
+        tabs.add(mods, text='Mods')
+        ttk.Label(mods, text='Native mod (optional)', font=('', 12, 'bold')).pack(anchor='w')
+        ttk.Label(mods, text='Choose a trusted mod DLL. Leave this empty to play without native mods.\nMods run code on your PC and may change gameplay or saves.', wraplength=600).pack(anchor='w', pady=12)
+        mod_row = ttk.Frame(mods); mod_row.pack(fill='x')
+        ttk.Entry(mod_row, textvariable=self.vars['native_mod']).pack(side='left', fill='x', expand=True)
+        ttk.Button(mod_row, text='Browse…', command=self.browse_mod).pack(side='left', padx=6)
+        ttk.Button(mods, text='Disable native mod', command=lambda: self.vars['native_mod'].set('')).pack(anchor='w', pady=12)
+        ttk.Label(mods, text='Save settings, then restart the game to apply your selection.').pack(anchor='w')
+        ttk.Button(mods, text='Save settings', command=self.save).pack(anchor='w', pady=12)
         ttk.Label(play, text='Original USA game disc (.gdi)').pack(anchor='w')
         row = ttk.Frame(play); row.pack(fill='x', pady=6)
         ttk.Entry(row, textvariable=self.vars['gdi']).pack(side='left', fill='x', expand=True)
@@ -78,6 +88,10 @@ class Launcher:
     def browse(self):
         path = filedialog.askopenfilename(filetypes=[('Dreamcast GDI', '*.gdi')])
         if path: self.vars['gdi'].set(path)
+
+    def browse_mod(self):
+        path = filedialog.askopenfilename(filetypes=[('Native mod', '*.dll')])
+        if path: self.vars['native_mod'].set(path)
 
     def reset_controls(self):
         for key in DEFAULTS:

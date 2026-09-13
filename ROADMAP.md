@@ -9,6 +9,7 @@ This tracks the requested progression toward a polished PC port. It does not cla
 - Volume, audio buffering, display options and keyboard/controller remapping.
 - A standalone input/audio probe for physical-measurement recordings.
 - Optional texture replacement through the existing renderer.
+- Experimental native mod ABI with compatibility checks, RAM access and lifecycle/frame callbacks (see NATIVE-MODS.md).
 - Source-only CI checks and settings persistence tests.
 
 ## Completed acceptance
@@ -17,13 +18,13 @@ The clean four-DLL build, 64 native test passes, settings tests and matched repl
 
 ## Remaining comparison goals
 
-- Remove remaining long frame stalls under isolated workloads.
+- Address remaining game-frame gaps: the traced 72 ms interval includes 66.79 ms of emulated time between game frames; presentation takes about 0.5 ms.
 - Identify and patch rhythm-judgement timing for an actual calibration offset.
 - Record physical controller-to-speaker latency and complete a manual playthrough.
 - Test on additional, less powerful PCs.
 - Implement game-aware widescreen, including backgrounds, HUD and clipping fixes.
 - Implement high-refresh interpolation while preserving game logic and rhythm timing.
-- Establish executable-mod hooks and compatibility/version checks.
+- Expand the initial native mod API with guest-function hooks, mod management and checkpoint state support.
 - Port Windows host interfaces and validate Linux/macOS builds on those platforms.
 - Provide installation without a compiler, using an appropriate asset-import/local-generation design.
 

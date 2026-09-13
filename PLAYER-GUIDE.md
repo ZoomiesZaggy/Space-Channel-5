@@ -25,3 +25,7 @@ Place PNG/JPEG replacements at `userdata/mods/MK-51051/<hexadecimal-texture-hash
 For local authoring, set `SC5_DUMP_TEXTURES=1`. Encountered textures are written to `userdata/texture-dumps/MK-51051/`; filenames identify replacement hashes. These private, game-derived files are ignored by Git. Put your own replacement artwork in the mod directory; do not publish dumped originals.
 
 This supports texture replacement, not executable mods or game-logic hooks. Synthetic replacements were used to verify changed rendering with unchanged machine state.
+
+## Native mods (experimental)
+
+The launcher’s Mods tab lets you choose one trusted native mod DLL. Leave the field empty, or select Disable native mod and save, for ordinary play. Restart the game after changing this selection. See NATIVE-MODS.md for the developer API and its current limits.

@@ -25,13 +25,13 @@ int main(int argc,char **argv){
   defaultEnv("SC5_VISIBLE","1");defaultEnv("SC5_PLAY_AUDIO","1");
   defaultEnv("SC5_DEFER_SILENT_AUDIO","1");
   const std::map<std::string,const char*> options={{"--gdi","SC5_GDI"},{"--image","SC5_IMAGE"},{"--dll","SC5_NATIVE_DLL"},{"--data","SC5_RUNTIME_DATA"},
-   {"--budget","SC5_INSTRUCTION_BUDGET"},{"--input-script","SC5_INPUT_SCRIPT"},{"--frame","SC5_FRAME_OUTPUT"},{"--audio-capture","SC5_AUDIO_OUTPUT"},
+   {"--native-mod","SC5_NATIVE_MOD"},{"--budget","SC5_INSTRUCTION_BUDGET"},{"--input-script","SC5_INPUT_SCRIPT"},{"--frame","SC5_FRAME_OUTPUT"},{"--audio-capture","SC5_AUDIO_OUTPUT"},
    {"--checkpoint-load","SC5_CHECKPOINT_LOAD"},{"--checkpoint-save","SC5_CHECKPOINT_SAVE"},{"--stop-file","SC5_STOP_FILE"}};
   for(int j=1;j<argc;j++){
    std::string option=argv[j];
    if(option=="--help"){
     std::cout<<"Space Channel 5 native development build\nUsage: sc5-native-dev.exe --gdi <original USA .gdi> [--hidden] [--silent]\n"
-     <<"Options: --image --dll --data --budget --input-script --frame --audio-capture --checkpoint-load --checkpoint-save --stop-file\n"
+     <<"Options: --native-mod <absolute DLL path> --image --dll --data --budget --input-script --frame --audio-capture --checkpoint-load --checkpoint-save --stop-file\n"
      <<"Creating the optional stop file requests a graceful stop and checkpoint save.\n"
      <<"Normal play has no instruction limit; --budget sets a diagnostic limit (0 means unlimited).\n"
      <<"Controls: Enter=Start, arrows=direction pad, Z/Space=A, X/Backspace=B, A=X, S=Y; SDL gamepad supported.\n";return 0;

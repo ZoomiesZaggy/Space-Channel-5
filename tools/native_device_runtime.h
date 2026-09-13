@@ -28,6 +28,7 @@
 #include "native_audio_capture.h"
 #include "native_input.h"
 #include "native_cycle_model.h"
+#include "native_mod_runtime.h"
 #include "rend/CustomTexture.h"
 
 static u32 (*nativeState)(u32);
@@ -263,7 +264,6 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
  }
  // No reference interpreter Step/Run calls: the AOT DLL drives the device bus.
  std::unique_ptr<NativeAudioSession> audio;
- if(std::getenv("SC5_AUDIO_OUTPUT")||std::getenv("SC5_PLAY_AUDIO"))audio=std::make_unique<NativeAudioSession>();
  const char *budgetText=std::getenv("SC5_INSTRUCTION_BUDGET");
  const u64 requestedBudget=budgetText?std::stoull(budgetText):50000000u;
  nativeRequire(requestedBudget==0 || (requestedBudget>5095138u && requestedBudget<=1000000000000ull),"budget must be 0 (unlimited) or 5095139..1000000000000");
@@ -276,7 +276,7 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
  const u32 startFrame=FrameCount;
  u64 presentedFrames=0;
  const auto wallStart=std::chrono::steady_clock::now();
- struct HostTiming{u64 begin,end,deviceBegin,deviceEnd;u32 frames;};
+ struct HostTiming{u64 begin,end,deviceBegin,deviceEnd;u32 frames;u64 runEnd;};
  std::vector<HostTiming> hostTiming;
  const char *hostTimingPath=std::getenv("SC5_HOST_TIMING_CSV");
  if(hostTimingPath)hostTiming.reserve(1000000);
@@ -298,13 +298,17 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
   std::cout<<"Switched native AOT to ROUND"<<module<<" module\n";
  };
  if(checkpointModule!=1)switchModule(checkpointModule);
+ NativeModSession mods;
+ if(std::getenv("SC5_AUDIO_OUTPUT")||std::getenv("SC5_PLAY_AUDIO"))audio=std::make_unique<NativeAudioSession>();
  while(retired<budget && !nativeState(20) && !inputHost->quit){
   const u32 frameBeforeChunk=FrameCount;
   const u64 traceBegin=hostTimingPath?SDL_GetPerformanceCounter():0,deviceBefore=hostTimingPath?sh4_sched_now64():0;
   u32 amount=static_cast<u32>(std::min<u64>(budget-retired,chunkLimit));u32 completed=runChunk(amount);retired+=completed;
+  if(FrameCount!=frameBeforeChunk)mods.frame(activeModule,FrameCount-startFrame,sh4_sched_now64()-startTicks);
+  const u64 traceRunEnd=hostTimingPath?SDL_GetPerformanceCounter():0;
   // The standalone host has no ImGui driver to swap the rendered back buffer.
   if(surface&&FrameCount!=frameBeforeChunk&&surface->present())presentedFrames++;
-  if(hostTimingPath&&hostTiming.size()<1000000)hostTiming.push_back({traceBegin,SDL_GetPerformanceCounter(),deviceBefore,sh4_sched_now64(),FrameCount-frameBeforeChunk});
+  if(hostTimingPath&&hostTiming.size()<1000000)hostTiming.push_back({traceBegin,SDL_GetPerformanceCounter(),deviceBefore,sh4_sched_now64(),FrameCount-frameBeforeChunk,traceRunEnd});
   if(pendingModule){switchModule(pendingModule);if(checkpointSavePath)saveNativeFullCheckpoint(checkpointSavePath,activeModule);continue;}
   if(nativeState(20)==7&&nativeState(16)>=0x8c270000u&&nativeState(16)<0x8c2f0000u){
    const u32 loadedModule=identifyLoadedRound(imagePath);
@@ -331,8 +335,8 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
  os_InputUpdateOverride=nullptr;nativeInput=nullptr;inputHost.reset();
  audio.reset(); // Reference-only analysis below must never enter the native WAV.
  if(hostTimingPath){
-  std::ofstream out(hostTimingPath);out<<"begin_qpc,end_qpc,device_begin,device_end,frames,frequency\n";
-  for(const auto &entry:hostTiming)out<<entry.begin<<','<<entry.end<<','<<entry.deviceBegin<<','<<entry.deviceEnd<<','<<entry.frames<<','<<SDL_GetPerformanceFrequency()<<'\n';
+  std::ofstream out(hostTimingPath);out<<"begin_qpc,end_qpc,device_begin,device_end,frames,frequency,run_end_qpc\n";
+  for(const auto &entry:hostTiming)out<<entry.begin<<','<<entry.end<<','<<entry.deviceBegin<<','<<entry.deviceEnd<<','<<entry.frames<<','<<SDL_GetPerformanceFrequency()<<','<<entry.runEnd<<'\n';
  }
  if(surface&&framePath)std::cout<<"Native frame available="<<surface->capture(framePath)<<"\n";
  if(const char *dumpPath=std::getenv("SC5_RAM_DUMP")){

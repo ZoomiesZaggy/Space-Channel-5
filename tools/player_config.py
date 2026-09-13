@@ -5,7 +5,7 @@ import pathlib
 ACTIONS = ('start', 'up', 'down', 'left', 'right', 'a', 'b', 'x', 'y')
 KEYS = ('Return', 'Up', 'Down', 'Left', 'Right', 'Space', 'Backspace', 'Tab', 'Left Shift', 'Right Shift') + tuple('ABCDEFGHIJKLMNOPQRSTUVWXYZ') + tuple('0123456789')
 PADS = ('start', 'back', 'a', 'b', 'x', 'y', 'dpup', 'dpdown', 'dpleft', 'dpright', 'leftshoulder', 'rightshoulder', 'leftstick', 'rightstick')
-DEFAULTS = dict(gdi='', volume='100', audio_buffer_ms='64', texture_packs='0', fullscreen='0', window_scale='1', vsync='0')
+DEFAULTS = dict(gdi='', native_mod='', volume='100', audio_buffer_ms='64', texture_packs='0', fullscreen='0', window_scale='1', vsync='0')
 DEFAULTS.update(zip(('key_' + a for a in ACTIONS), ('Return', 'Up', 'Down', 'Left', 'Right', 'Z', 'X', 'A', 'S')))
 DEFAULTS.update(zip(('pad_' + a for a in ACTIONS), ('start', 'dpup', 'dpdown', 'dpleft', 'dpright', 'a', 'b', 'x', 'y')))
 
@@ -20,6 +20,8 @@ def validate(values):
     for key, low, high in (('volume', 0, 100), ('audio_buffer_ms', 32, 128), ('texture_packs', 0, 1), ('fullscreen', 0, 1), ('window_scale', 1, 4), ('vsync', 0, 1)):
         if not result[key].isdigit() or not low <= int(result[key]) <= high:
             raise ValueError('Invalid ' + key)
+    if result['native_mod'] and not pathlib.PureWindowsPath(result['native_mod']).is_absolute():
+        raise ValueError('Native mod path must be absolute')
     for prefix, allowed in (('key_', KEYS), ('pad_', PADS)):
         bindings = [result[prefix + a] for a in ACTIONS]
         if any(b not in allowed for b in bindings):
