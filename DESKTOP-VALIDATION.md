@@ -25,3 +25,9 @@ Interpolation generated and presented 947 midpoints and their 947 completed fram
 The full Linux/macOS host has built in CI. The downloadable-build matrix additionally compiles each platform's actual four native modules, exercises their ABI and FP behavior, freezes the launcher, verifies its installation and uploads archives. Consult the linked run results and release assets for final matrix status. CI build and ABI checks do not establish a full game playthrough, graphics, audio or controller acceptance on Linux/macOS hardware. Those builds remain previews.
 
 The earlier four-report assist-mode playthrough through credits and return to title is recorded in the existing validation history. The new rendering options have matched-scene acceptance, not a fresh exhaustive full-game manual playthrough.
+
+## Completed desktop build matrix
+
+The [native-module build](https://github.com/ZoomiesZaggy/Space-Channel-5/actions/runs/34732763045) and [final packaging run](https://github.com/ZoomiesZaggy/Space-Channel-5/actions/runs/34733910567) both succeeded on Linux x64, Linux ARM64, macOS ARM64 and macOS Intel. Every target compiled the full host, loaded all four native modules, passed ABI/disc-rejection/floating-point checks, froze the launcher, and passed its bundled Tcl/native-dependency check. The final packages include expanded geometry, interpolation, portable user-data paths and save-directory locking.
+
+No original disc assets were supplied to CI. These results validate builds and packaged runtime loading; they do not replace hands-on game, graphics, audio and controller testing on Linux/macOS hardware.
