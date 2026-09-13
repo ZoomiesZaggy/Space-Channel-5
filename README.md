@@ -1,6 +1,6 @@
 <div align="center">
 
-![Space Channel 5 — Native desktop port](docs/assets/header.svg)
+![Ulala and the Channel 5 spaceship — Space Channel 5 native desktop port](docs/assets/ulala-spaceship-banner.png)
 
 # Space Channel 5 · Native
 
@@ -37,6 +37,8 @@ An unofficial native port of the USA Dreamcast release, with configurable contro
 This is a **preview release**. Linux and macOS still need hands-on gameplay, graphics, audio and controller testing. macOS apps are ad-hoc signed, not notarized. See [platform details](PLATFORM-STATUS.md).
 
 ## Quick start
+
+![Ulala playing Space Channel 5 on a PC with a Dreamcast controller](docs/assets/ulala-pc-banner.png)
 
 1. **Download and extract** the archive for your computer.
 2. **Open SpaceChannel5** — `SpaceChannel5.exe` on Windows, `SpaceChannel5` on Linux, or `SpaceChannel5.app` on macOS.
