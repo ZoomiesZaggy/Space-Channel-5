@@ -17,7 +17,7 @@ def validate(values):
     for key, value in result.items():
         if any(c in value for c in '\r\n\0'):
             raise ValueError('Invalid characters in ' + key)
-    for key, low, high in (('display_mode', 0, 3), ('motion_interpolation', 0, 1), ('volume', 0, 100), ('audio_buffer_ms', 32, 128), ('texture_packs', 0, 1), ('fullscreen', 0, 1), ('window_scale', 1, 4), ('vsync', 0, 1)):
+    for key, low, high in (('display_mode', 0, 4), ('motion_interpolation', 0, 1), ('volume', 0, 100), ('audio_buffer_ms', 32, 128), ('texture_packs', 0, 1), ('fullscreen', 0, 1), ('window_scale', 1, 4), ('vsync', 0, 1)):
         if not result[key].isdigit() or not low <= int(result[key]) <= high:
             raise ValueError('Invalid ' + key)
     offset = result['rhythm_offset_ms']

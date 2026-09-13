@@ -1,8 +1,14 @@
 name: Downloadable desktop builds
 on:
   workflow_dispatch:
+    inputs:
+      modules_run_id:
+        description: 'Optional prior release-build run with compatible native modules'
+        required: false
+        default: ''
 permissions:
   contents: write # GitHub requires write access to read unpublished draft assets.
+  actions: read
 jobs:
   package:
     strategy:
@@ -23,6 +29,7 @@ jobs:
         run: brew install ninja
       - run: python -m pip install pyinstaller==6.22.2
       - name: Fetch verified corresponding source
+        if: inputs.modules_run_id == ''
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -31,7 +38,17 @@ jobs:
           curl --fail --location --header "Authorization: Bearer $GH_TOKEN" --header "Accept: application/octet-stream" https://api.github.com/repos/ZoomiesZaggy/Space-Channel-5/releases/assets/560365252 --output work/native-aot-source.tar.gz
       - run: python tools/test_native_host_os.py --compiler c++
       - run: python tools/build_native_port.py --jobs 3
-      - run: python tools/build_release_modules.py --archive work/native-aot-source.tar.gz --sha256 534e48bf347113b5c31c0270ab0434a0691b6b9e35114482a8af1a6273c2edd9 --jobs 2
+      - uses: actions/download-artifact@v4
+        if: inputs.modules_run_id != ''
+        with:
+          name: SpaceChannel5-${{ runner.os }}-${{ runner.arch }}
+          run-id: ${{ inputs.modules_run_id }}
+          github-token: ${{ github.token }}
+          path: work/reuse
+      - if: inputs.modules_run_id != ''
+        run: python tools/reuse_release_modules.py --directory work/reuse
+      - if: inputs.modules_run_id == ''
+        run: python tools/build_release_modules.py --archive work/native-aot-source.tar.gz --sha256 534e48bf347113b5c31c0270ab0434a0691b6b9e35114482a8af1a6273c2edd9 --jobs 2
       - run: python tools/test_release_modules.py
       - run: python tools/package_release.py --host-dir work/native-port-build --module-dir build --output work/SpaceChannel5
       - name: Archive Linux build

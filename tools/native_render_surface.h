@@ -39,7 +39,7 @@ public:
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
   const int scale=nativeNumber("SC5_WINDOW_SCALE",1,1,4);
   const bool fullscreen=nativeNumber("SC5_FULLSCREEN",0,0,1)!=0;
-  displayMode=nativeNumber("SC5_DISPLAY_MODE",0,0,3);
+  displayMode=nativeNumber("SC5_DISPLAY_MODE",0,0,4);
   surface=SDL_CreateWindow("Space Channel 5",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,(displayMode?854:640)*scale,480*scale,SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|(std::getenv("SC5_VISIBLE")?SDL_WINDOW_SHOWN:SDL_WINDOW_HIDDEN)|(fullscreen?SDL_WINDOW_FULLSCREEN_DESKTOP:0));
   if(!surface)throw std::runtime_error(SDL_GetError());
   window=surface;context=SDL_GL_CreateContext(surface);
@@ -50,6 +50,7 @@ public:
   // No emulator UI: only the GL capabilities and native game renderer are needed.
   findGLVersion();
   config::RendererType=RenderType::OpenGL;config::ThreadedRendering=false;
+  config::Widescreen=displayMode==4;
   std::cout<<"Render surface: PVR renderer initialization"<<std::endl;
   if(nativeNumber("SC5_MOTION_INTERPOLATION",0,0,1)){motion=new NativeMotionRenderer();renderer=motion;}
   if(!rend_init_renderer())throw std::runtime_error("Native device renderer initialization failed");

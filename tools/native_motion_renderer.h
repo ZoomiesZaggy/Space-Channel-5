@@ -15,7 +15,7 @@ class NativeMotionRenderer : public OpenGLRenderer {
  std::vector<PolyParam> previousLists[3];
  unsigned interpolated=0,rejected=0;
  static bool sameMaterial(const PolyParam &a,const PolyParam &b){
-  return a.count==b.count && a.tsp.full==b.tsp.full && a.tcw.full==b.tcw.full && a.pcw.full==b.pcw.full && a.isp.full==b.isp.full && a.tileclip==b.tileclip;
+  return a.count==b.count && a.tsp.full==b.tsp.full && a.tcw.full==b.tcw.full && a.pcw.full==b.pcw.full && a.isp.full==b.isp.full && a.tileclip==b.tileclip && a.tsp1.full==b.tsp1.full && a.tcw1.full==b.tcw1.full;
  }
 
 public:
@@ -33,7 +33,7 @@ public:
    for(const auto &candidate:previousLists[list])if(sameMaterial(poly,candidate)){
     if(match){match=nullptr;break;}match=&candidate;
    }
-   if(!match || poly.first+poly.count>context.idx.size() || match->first+match->count>indices.size())continue;
+   if(!match || uint64_t(poly.first)+poly.count>context.idx.size() || uint64_t(match->first)+match->count>indices.size())continue;
    bool valid=true;std::vector<std::pair<u32,u32>> pairs;
    for(u32 k=0;k<poly.count;k++){
     u32 now=context.idx[poly.first+k],before=indices[match->first+k];
@@ -43,10 +43,13 @@ public:
     const auto &a=previous[before],&b=current[now];
     if(!std::isfinite(a.x+a.y+a.z+b.x+b.y+b.z) || a.z<=0 || b.z<=0 ||
        std::abs(a.x-b.x)>80 || std::abs(a.y-b.y)>80 || a.z/b.z<0.5f || a.z/b.z>2.f ||
-       a.u!=b.u || a.v!=b.v){valid=false;break;}
+       a.u!=b.u || a.v!=b.v || a.u1!=b.u1 || a.v1!=b.v1){valid=false;break;}
     pairs.emplace_back(now,before);
    }
-   if(valid)for(auto pair:pairs)matches[pair.first]=pair.second;
+   if(valid)for(auto pair:pairs){
+    int &entry=matches[pair.first];
+    if(entry==-1)entry=pair.second;else if(entry>=0 && entry!=int(pair.second))entry=-2;
+   }
   }
   for(size_t j=0;j<current.size();j++)if(matches[j]>=0){
    const auto &a=previous[matches[j]],&b=current[j];

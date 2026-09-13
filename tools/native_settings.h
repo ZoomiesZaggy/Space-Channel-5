@@ -33,7 +33,7 @@ inline void loadNativeSettings(const std::filesystem::path &path){
   auto found=names.find(name);if(found==names.end())throw std::runtime_error("Unknown setting: "+name);
   if(!value.empty()&&!std::getenv(found->second.c_str()))nativeSetEnvironment(found->second.c_str(),value.c_str());
  }
- nativeNumber("SC5_DISPLAY_MODE",0,0,3);nativeNumber("SC5_MOTION_INTERPOLATION",0,0,1);
+ nativeNumber("SC5_DISPLAY_MODE",0,0,4);nativeNumber("SC5_MOTION_INTERPOLATION",0,0,1);
  nativeNumber("SC5_RHYTHM_OFFSET_MS",0,-250,250);
  nativeNumber("SC5_VOLUME",100,0,100);nativeNumber("SC5_FULLSCREEN",0,0,1);
  nativeNumber("SC5_AUDIO_BUFFER_MS",64,32,128);
