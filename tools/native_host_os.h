@@ -8,6 +8,10 @@
 #include <string>
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
 #endif
 
 // Empty means unset, including on POSIX: presence enables several diagnostic flags.
@@ -51,6 +55,34 @@ public:
  ~NativeAwakeGuard(){
 #ifdef _WIN32
   SetThreadExecutionState(ES_CONTINUOUS);
+#endif
+ }
+};
+class NativeGameLock {
+#ifdef _WIN32
+ HANDLE handle=INVALID_HANDLE_VALUE;
+#else
+ int handle=-1;
+#endif
+public:
+ explicit NativeGameLock(const std::filesystem::path &directory){
+  const auto path=directory/".game.lock";
+#ifdef _WIN32
+  handle=CreateFileW(path.c_str(),GENERIC_READ|GENERIC_WRITE,0,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+  if(handle==INVALID_HANDLE_VALUE)throw std::runtime_error("Cannot lock save directory; another game may already be running");
+#else
+  handle=open(path.c_str(),O_RDWR|O_CREAT,0600);
+  if(handle<0)throw std::runtime_error("Cannot open save directory lock");
+  if(flock(handle,LOCK_EX|LOCK_NB)){close(handle);handle=-1;throw std::runtime_error("Cannot lock save directory; another game may already be running");}
+#endif
+ }
+ NativeGameLock(const NativeGameLock&)=delete;
+ NativeGameLock &operator=(const NativeGameLock&)=delete;
+ ~NativeGameLock(){
+#ifdef _WIN32
+  if(handle!=INVALID_HANDLE_VALUE)CloseHandle(handle);
+#else
+  if(handle>=0)close(handle);
 #endif
  }
 };

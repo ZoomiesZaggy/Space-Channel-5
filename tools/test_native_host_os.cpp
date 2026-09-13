@@ -72,6 +72,11 @@ int main(int argc,char **argv){
  require(std::getenv("SC5_TEST_HOST_ENV")==nullptr);
  const auto first=nativeMilliseconds();require(nativeMilliseconds()>=first);
  const auto root=std::filesystem::path(argv[1]);
+ {NativeGameLock first(root);bool blocked=false;
+  try{NativeGameLock second(root);}catch(const std::runtime_error&){blocked=true;}
+  require(blocked);
+ }
+ {NativeGameLock afterClose(root);}
  const auto source=(root/"checkpoint.tmp").string(),destination=(root/"checkpoint.bin").string();
  {std::ofstream file(source);file<<"new";}
  {std::ofstream file(destination);file<<"old";}

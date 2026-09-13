@@ -44,6 +44,7 @@ int main(int argc,char **argv){
   }
   if(!std::getenv("SC5_GDI"))throw std::runtime_error("Specify the original Space Channel 5 USA disc with --gdi <path>");
   std::filesystem::create_directories(std::getenv("SC5_RUNTIME_DATA"));
+  NativeGameLock gameLock(std::getenv("SC5_RUNTIME_DATA"));
   std::cout<<"Space Channel 5 native development build\n";
   auto result=runNativeDeviceHarness();
   if(result.fault){std::cerr<<"Native execution stopped at "<<std::hex<<result.pc<<" with unsupported-path fault "<<result.fault<<". Development remains unfinished.\n";return 2;}
