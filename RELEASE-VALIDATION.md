@@ -1,4 +1,6 @@
-# Release-preparation validation — 2026-09-12
+Current desktop preview evidence is in [DESKTOP-VALIDATION.md](DESKTOP-VALIDATION.md). The results below describe earlier builds.
+
+# Earlier release-preparation validation — 2026-09-12
 
 The launcher, persistent settings, optional texture replacement and measurement probe are implemented. The complete comparison roadmap is **not finished**; see ROADMAP.md.
 
