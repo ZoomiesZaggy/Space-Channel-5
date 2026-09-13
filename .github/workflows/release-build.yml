@@ -38,6 +38,12 @@ jobs:
           curl --fail --location --header "Authorization: Bearer $GH_TOKEN" --header "Accept: application/octet-stream" https://api.github.com/repos/ZoomiesZaggy/Space-Channel-5/releases/assets/560365252 --output work/native-aot-source.tar.gz
       - run: python tools/test_native_host_os.py --compiler c++
       - run: python tools/build_native_port.py --jobs 3
+      - name: Wait for reusable module build
+        if: inputs.modules_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODULE_RUN_ID: ${{ inputs.modules_run_id }}
+        run: gh run watch "$MODULE_RUN_ID" --exit-status --interval 60
       - uses: actions/download-artifact@v4
         if: inputs.modules_run_id != ''
         with:

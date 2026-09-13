@@ -50,6 +50,8 @@ def main():
         shutil.copy2(args.host_dir / 'libwinpthread-1.dll', binary / 'libwinpthread-1.dll')
     shutil.copy2(ROOT / 'LICENSE', output / 'LICENSE')
     shutil.copytree(ROOT / 'licenses', output / 'licenses')
+    for document in ('PLAYER-GUIDE.md', 'PLATFORM-STATUS.md', 'SOURCE-PROVENANCE.md'):
+        shutil.copy2(ROOT / document, output / document)
     if sys.platform == 'darwin':
         for module in binary.iterdir():
             subprocess.run(['codesign', '--force', '--sign', '-', str(module)], check=True)
