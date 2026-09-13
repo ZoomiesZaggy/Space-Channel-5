@@ -51,10 +51,14 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
     units.update({f'pages_{group:x}':'#include "native-shared.h"\n'+''.join(bodies) for group,bodies in groups.items()})
     identity=subprocess.check_output([cc,'--version'],text=True)
     dependency_hash=hashlib.sha256((ROOT/'tools/native_state.h').read_bytes()+(ROOT/'tools/native_fsca_table.inc').read_bytes()+(ROOT/'tools/native_fast_clock.h').read_bytes()+(ROOT/'tools/native_static_timing.h').read_bytes()+(ROOT/'tools/native_fp_control.h').read_bytes()).hexdigest()
+    shared_cache=ROOT/'build/aot-shared-objects';shared_cache.mkdir(exist_ok=True)
     def compile_unit(item):
         name,body=item; path=directory/(name+'.c'); obj=directory/(name+'.obj'); stamp=directory/(name+'.sha256')
         digest=hashlib.sha256((identity+target+opt+str(cpu)+str(math_errno)+dependency_hash+header+body).encode()).hexdigest()
         if obj.exists() and stamp.exists() and stamp.read_text()==digest:return str(obj),False
+        cached=shared_cache/(digest+'.obj')
+        if cached.exists():
+            shutil.copy2(cached,obj);stamp.write_text(digest);return str(obj),False
         path.write_text(body)
         command=[cc,'-O'+opt,'-std=c99','-c',str(path),'-o',str(obj)]
         if not windows:command+=['-fPIC']
@@ -62,6 +66,7 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
         if not math_errno:command+=['-fno-math-errno']
         result=subprocess.run(command,capture_output=True,text=True)
         if result.returncode:raise RuntimeError(result.stdout+result.stderr)
+        shutil.copy2(obj,cached)
         stamp.write_text(digest);print(f'Compiled {name}',flush=True);return str(obj),True
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
         results=list(pool.map(compile_unit,units.items()))
