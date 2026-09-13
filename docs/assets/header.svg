@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title desc">
+<title id="title">Space Channel 5 — Native desktop port</title><desc id="desc">An original orbital broadcast design in orange, violet and midnight blue.</desc>
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#14132e"/><stop offset="1" stop-color="#080c19"/></linearGradient><linearGradient id="planet" x2="1" y2="1"><stop stop-color="#ffb45a"/><stop offset="1" stop-color="#fb563d"/></linearGradient></defs>
+<rect width="1280" height="360" rx="20" fill="url(#bg)"/>
+<g fill="none" stroke="#8c79ee" stroke-opacity=".2"><path d="M0 290H1280M0 310H1280M0 330H1280"/><ellipse cx="1100" cy="160" rx="250" ry="110" transform="rotate(-28 1100 160)"/><circle cx="1100" cy="160" r="140"/></g>
+<circle cx="1100" cy="160" r="85" fill="url(#planet)"/><ellipse cx="1100" cy="160" rx="160" ry="35" fill="none" stroke="#b7a2ff" stroke-width="5" transform="rotate(-28 1100 160)"/>
+<g fill="#eae4ff"><circle cx="850" cy="64" r="3"/><circle cx="1210" cy="280" r="3"/><circle cx="970" cy="294" r="2"/><circle cx="1180" cy="38" r="2"/></g>
+<rect x="56" y="48" width="6" height="22" rx="3" fill="#ff9254"/>
+<text x="78" y="65" fill="#c7bcf3" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" letter-spacing="4">NATIVE DESKTOP PORT</text>
+<text x="52" y="159" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="76" letter-spacing="-3">SPACE CHANNEL <tspan fill="#ff9254">5</tspan></text>
+<text x="57" y="208" fill="#d1cce7" font-family="Arial,Helvetica,sans-serif" font-size="23">The rhythm returns to your desktop.</text>
+<text x="57" y="290" fill="#b8b0d6" font-family="Arial,Helvetica,sans-serif" font-size="15" letter-spacing="2">WINDOWS / LINUX / macOS</text>
+<text x="57" y="323" fill="#827b9e" font-family="Arial,Helvetica,sans-serif" font-size="12">UNOFFICIAL COMMUNITY PROJECT</text>
+</svg>

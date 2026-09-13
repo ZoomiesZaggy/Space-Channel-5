@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a problem with setup, gameplay, graphics, audio or controls.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "Do not upload game assets, disc images or private saves. Review logs for personal paths before sharing."
+  - type: input
+    id: version
+    attributes:
+      label: Release version
+      placeholder: v0.1.0-preview.1
+    validations:
+      required: true
+  - type: textarea
+    id: system
+    attributes:
+      label: System and input device
+      description: Operating system, CPU, GPU, and keyboard/controller model.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: What happened and how to reproduce it
+      description: Include the report or menu, steps, expected behavior and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: settings
+    attributes:
+      label: Relevant settings
+      description: Display mode, interpolation, audio buffer, rhythm offset, Steam Input and mods. Does it happen with original framing and interpolation off?
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Additional details
+      description: Optional reviewed log excerpts or observations. Do not attach original game files.

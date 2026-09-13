@@ -1,42 +1,82 @@
-# Space Channel 5 — native desktop port
+<div align="center">
 
-An unofficial ahead-of-time (AOT) port project for the USA Dreamcast version of Space Channel 5. Gameplay runs through offline-generated native modules; the gameplay path does not use an SH4 interpreter or dynamic recompiler fallback. Flycast supplies device, rendering and audio components.
+![Space Channel 5 — Native desktop port](docs/assets/header.svg)
 
-**You must supply your own original USA GDI and its tracks.** Download packages contain the launcher, native host and precompiled translated modules. Players do not install Python, Git or a compiler: extract the package, run SpaceChannel5, select the GDI and choose Play. Original disc assets and private saves are not distributed. This unofficial preview is not affiliated with Sega. See [releases](https://github.com/ZoomiesZaggy/Space-Channel-5/releases) and [platform status](PLATFORM-STATUS.md) for available builds and validation limits.
+# Space Channel 5 · Native
 
-## Status
+**The rhythm returns to your desktop.**
 
-The local build completed all four reports, full credits and return to title in an uninterrupted assist-mode run with zero execution faults. Keyboard and Steam Controller operation were confirmed by the tester. The latest frontend passed matched opening and later-report replays and all 16 regression tests on each of four rebuilt modules. This is not a claim of a complete manual playthrough or exhaustive game-path coverage.
+An unofficial native port of the USA Dreamcast release, with configurable controls, display options and compiler-free downloads.
 
-Original presentation is approximately 30 FPS. Optional geometry interpolation adds intermediate presentations without advancing game logic, music or input. Display choices include original framing, widescreen fit, crop, stretch and experimental expanded geometry. Prerecorded backgrounds remain 4:3. Interpolation can add up to one 60 Hz interval of visual delay and is off by default. See [the player guide](PLAYER-GUIDE.md) and [performance notes](PERFORMANCE-NOTES.md).
+[![Download](https://img.shields.io/badge/DOWNLOAD-DESKTOP_PREVIEW-ff9254?style=for-the-badge)](https://github.com/ZoomiesZaggy/Space-Channel-5/releases/tag/v0.1.0-preview.1)
+[![Guide](https://img.shields.io/badge/READ-PLAYER_GUIDE-9b86ed?style=for-the-badge)](PLAYER-GUIDE.md)
+[![Issues](https://img.shields.io/badge/HELP-REPORT_AN_ISSUE-394461?style=for-the-badge)](https://github.com/ZoomiesZaggy/Space-Channel-5/issues/new/choose)
 
-## Developer build on Windows
+[![Source checks](https://github.com/ZoomiesZaggy/Space-Channel-5/actions/workflows/source-checks.yml/badge.svg)](https://github.com/ZoomiesZaggy/Space-Channel-5/actions/workflows/source-checks.yml)
+[![Desktop packages](https://github.com/ZoomiesZaggy/Space-Channel-5/actions/workflows/release-build.yml/badge.svg)](https://github.com/ZoomiesZaggy/Space-Channel-5/actions/workflows/release-build.yml)
+[![License](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
 
-For a guided build, run `Configure-and-play.cmd`, select your disc, and choose **Build from my disc**. The pinned portable compiler downloads automatically with SHA-256 verification; Git and Python must already be installed. The launcher also saves input, audio and display preferences. See [the player guide](PLAYER-GUIDE.md) and [remaining release work](ROADMAP.md).
+[Download](#download) · [Quick start](#quick-start) · [Features](#features) · [Controls](#controls) · [FAQ](#faq) · [Development](#development)
 
-Requirements: Git, Python 3.10+, and LLVM-MinGW 20260908 x64 UCRT. Extract the portable toolchain below `work/toolchain/` so its compiler is at `work/toolchain/<toolchain-folder>/bin/clang.exe`. The reference setup installs pinned CMake and Ninja into `work/build-tools/` and downloads the pinned upstream source and submodules. Run commands from the repository root.
+</div>
 
-```powershell
-$env:SC5_GDI = 'X:\path\Space Channel 5 (USA).gdi'
-python tools/inspect_disc.py "$env:SC5_GDI" --out .
-python tools/inspect_assets.py
-python tools/setup_reference.py
-$sc5cc = (Get-ChildItem 'work/toolchain/*/bin/clang.exe').FullName
-python tools/generate_static_timing.py --reference 'work/flycast-reference'
-New-Item -ItemType Directory -Force build | Out-Null
-python tools/build_round_aot.py --cc $sc5cc --opt 2 --round 1 --round 2 --round 3 --round 4
-Copy-Item build/native-diff-round1.dll build/native-diff.dll
-python tools/build_native_app.py
-.\Start-native-development.cmd "$env:SC5_GDI"
-```
+> **Bring your own disc.** You need the supported USA Dreamcast GDI and all its track files. Downloads include precompiled native modules, but no original disc assets. No Python, Git or compiler is needed to play.
 
-The extractor opens the supplied disc read-only and writes local ignored files. The AOT generator checks executable hashes and stops on an unsupported revision. Building all four DLLs is resource intensive. The reference and frontend now build in a fresh repository-local workspace. All four modules rebuilt and passed validation; see [release validation](RELEASE-VALIDATION.md).
+## Download
 
-`reports/observed-roots.json` contains deduplicated observed instruction addresses used by the generator, not game executable bytes. Unsupported execution targets stop and require an offline coverage expansion and rebuild. Additional diagnostic scripts under `tools/` may require locally generated reports or checkpoints.
+| Platform | Download | Validation |
+|---|---|---|
+| Windows · x64 | [Windows ZIP][windows] | Gameplay and regression tested |
+| Linux · x64 | [Linux x64 archive][linux-x64] | Build and runtime checks passed |
+| Linux · ARM64 | [Linux ARM64 archive][linux-arm] | Build and runtime checks passed |
+| macOS · Apple Silicon | [macOS ARM64 ZIP][mac-arm] | Build and runtime checks passed |
+| macOS · Intel | [macOS Intel ZIP][mac-x64] | Build and runtime checks passed |
+
+[Release notes, checksums and corresponding source][release] · [All releases](https://github.com/ZoomiesZaggy/Space-Channel-5/releases)
+
+This is a **preview release**. Linux and macOS still need hands-on gameplay, graphics, audio and controller testing. macOS apps are ad-hoc signed, not notarized. See [platform details](PLATFORM-STATUS.md).
+
+## Quick start
+
+1. **Download and extract** the archive for your computer.
+2. **Open SpaceChannel5** — `SpaceChannel5.exe` on Windows, `SpaceChannel5` on Linux, or `SpaceChannel5.app` on macOS.
+3. **Select your USA GDI**, keeping its track files together, then choose **Play**. The launcher validates and imports the required files automatically.
+
+Keep the disc files available during play: music, video and other assets are read from them. The original files remain read-only. Configure display, audio and controls in the launcher; settings apply on the next game launch.
+
+### What you need
+
+- A supported USA Dreamcast GDI with all of its tracks.
+- A computer matching the download’s architecture and a working OpenGL 3.3-capable graphics driver.
+- Keyboard or an SDL-compatible game controller.
+
+Minimum CPU/RAM specifications and older operating-system compatibility have not been established. The [player guide](PLAYER-GUIDE.md) covers configuration and saves.
+
+## Features
+
+### Native gameplay
+
+The game’s SH4 code is translated ahead of time into native modules. Gameplay does not use an SH4 interpreter or dynamic-recompiler fallback. Flycast provides the device, rendering and audio components.
+
+### Choose your picture
+
+Keep the original 4:3 framing, fit it inside a widescreen window, crop to fill, stretch, or try **expanded 16:9 geometry**. Original framing is the default. Expanded geometry is experimental; prerecorded backgrounds remain 4:3, and game-side object culling can limit what appears at the edges.
+
+### Optional smoother motion
+
+Geometry interpolation adds intermediate presentations with a **60 Hz target**, while game logic, input and music keep their original timing. It is off by default, can add about 17 ms of visual delay, and falls back when geometry cannot be matched. Prerecorded video retains its original cadence.
+
+### Controls and rhythm settings
+
+Remap keyboard and controller actions, adjust volume and audio buffering, and set a manual rhythm timing offset. Steam Input can translate Steam Controller inputs when the game is launched through Steam.
+
+### Texture packs and native mods
+
+Optional texture replacement and an experimental native mod interface are available. See [texture pack instructions](PLAYER-GUIDE.md#texture-packs) and the [native mod API](NATIVE-MODS.md).
 
 ## Controls
 
-| Action | Keyboard |
+| Action | Default keyboard input |
 |---|---|
 | Start / pause | Enter |
 | Directions | Arrow keys |
@@ -45,8 +85,62 @@ The extractor opens the supplied disc read-only and writes local ignored files. 
 | Dreamcast X | A |
 | Dreamcast Y | S |
 
-SDL game controllers are supported. For Steam Controller, add `build/sc5-native-dev.exe` as a non-Steam game, set launch options to `--gdi "X:\path\Space Channel 5 (USA).gdi"`, enable Steam Input and select a gamepad layout. Disable desktop configuration in the launcher if it replaces gamepad inputs. Launch through Steam. VMU saves are stored locally in `userdata/`.
+For Steam Controller on Windows, add `build/sc5-native-dev.exe` as a non-Steam game, enable Steam Input with a gamepad layout, and launch through Steam. Supply the disc path in saved settings or with `--gdi "X:\path\Space Channel 5 (USA).gdi"`. See [the player guide](PLAYER-GUIDE.md) for remapping and calibration.
 
-## Source and licensing
+## FAQ
 
-See [source provenance](SOURCE-PROVENANCE.md) and the retained notices in `licenses/` and `prototype/Dreamcast-Forge/LICENSE`. Flycast-derived components are GPL-2.0-or-later; Forge retains its MIT license. The GPL text is included in `LICENSE`. Sega game content is not covered by these source licenses or distributed here.
+### Do I need to build the game myself?
+
+No. Use a download above. The launcher imports supported files from your disc without compiling code. The source build tools are for developers.
+
+### Which version is supported?
+
+The supported USA Dreamcast revision in GDI format. The importer checks executable hashes and rejects unsupported data. Other regions, revisions and disc formats are not currently supported by the importer.
+
+### Where are my saves and settings?
+
+| Platform | Data location |
+|---|---|
+| Windows download | `userdata/` beside the launcher |
+| Linux download | `$XDG_DATA_HOME/SpaceChannel5/userdata/`, or `~/.local/share/SpaceChannel5/userdata/` |
+| macOS download | `~/Library/Application Support/SpaceChannel5/userdata/` |
+
+Back up and preserve `userdata` when updating. Imported assets and personal data are not included in release archives.
+
+### Does this support arbitrary refresh rates or fully widescreen video?
+
+No. Interpolation currently targets 60 Hz geometry presentation. The original prerecorded backgrounds remain 4:3; the display modes offer different ways to present them.
+
+### How much has been tested?
+
+Earlier Windows assist-mode validation completed all four reports, credits and return to title. The desktop preview passed 64 Windows native regression tests, matched gameplay-state/audio replays, and a fresh compiler-free import/boot test. Isolated default and interpolated audio tests had zero underruns. This is not an exhaustive manual playthrough or a physical input-latency measurement. [Read the validation results](DESKTOP-VALIDATION.md).
+
+## Known limitations and support
+
+Expanded geometry and interpolation are experimental. Occasional frame gaps remain. Linux/macOS hardware playtesting and broader PC compatibility testing are still needed. The [roadmap](ROADMAP.md) tracks further work.
+
+If something goes wrong, [open an issue](https://github.com/ZoomiesZaggy/Space-Channel-5/issues/new/choose) with the release version, operating system, graphics hardware, input device and steps to reproduce it. Review logs before attaching them; do not upload disc images, extracted game files or private saves.
+
+## Development
+
+- [Build from source](BUILDING.md)
+- [Contribute or report a bug](CONTRIBUTING.md)
+- [Platform implementation and testing](PLATFORM-STATUS.md)
+- [Native mod interface](NATIVE-MODS.md)
+- [Performance notes](PERFORMANCE-NOTES.md) and [release validation](DESKTOP-VALIDATION.md)
+- [Roadmap](ROADMAP.md)
+
+## Credits and licensing
+
+This project builds on [Flycast](https://github.com/flyinghead/flycast) for device, rendering and audio support, and the bundled Dreamcast-Forge decoder and supporting tools. Their contributors’ work and license notices are retained in this repository.
+
+Flycast-derived components are **GPL-2.0-or-later**; Dreamcast-Forge retains its MIT license. See [source provenance](SOURCE-PROVENANCE.md), [LICENSE](LICENSE), and the notices under `licenses/` and `prototype/Dreamcast-Forge/LICENSE`.
+
+Space Channel 5 belongs to its respective rights holders. This is an unofficial project, not affiliated with or endorsed by Sega. Original game assets are supplied by the player and are not distributed here.
+
+[release]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/tag/v0.1.0-preview.1
+[windows]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.1/SpaceChannel5-v0.1.0-preview.1-Windows-X64.zip
+[linux-x64]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.1/SpaceChannel5-v0.1.0-preview.1-Linux-X64.tar.gz
+[linux-arm]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.1/SpaceChannel5-v0.1.0-preview.1-Linux-ARM64.tar.gz
+[mac-arm]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.1/SpaceChannel5-v0.1.0-preview.1-macOS-ARM64.zip
+[mac-x64]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.1/SpaceChannel5-v0.1.0-preview.1-macOS-X64.zip

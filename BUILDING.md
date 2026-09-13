@@ -1,0 +1,35 @@
+# Building from source
+
+For playing, use the [prebuilt downloads](https://github.com/ZoomiesZaggy/Space-Channel-5/releases). These instructions are for developers.
+
+## Windows
+
+
+For a guided build, run `Configure-and-play.cmd`, select your disc, and choose **Build from my disc**. The pinned portable compiler downloads automatically with SHA-256 verification; Git and Python must already be installed. The launcher also saves input, audio and display preferences. See [the player guide](PLAYER-GUIDE.md) and [remaining release work](ROADMAP.md).
+
+Requirements: Git, Python 3.10+, and LLVM-MinGW 20260908 x64 UCRT. Extract the portable toolchain below `work/toolchain/` so its compiler is at `work/toolchain/<toolchain-folder>/bin/clang.exe`. The reference setup installs pinned CMake and Ninja into `work/build-tools/` and downloads the pinned upstream source and submodules. Run commands from the repository root.
+
+```powershell
+$env:SC5_GDI = 'X:\path\Space Channel 5 (USA).gdi'
+python tools/inspect_disc.py "$env:SC5_GDI" --out .
+python tools/inspect_assets.py
+python tools/setup_reference.py
+$sc5cc = (Get-ChildItem 'work/toolchain/*/bin/clang.exe').FullName
+python tools/generate_static_timing.py --reference 'work/flycast-reference'
+New-Item -ItemType Directory -Force build | Out-Null
+python tools/build_round_aot.py --cc $sc5cc --opt 2 --round 1 --round 2 --round 3 --round 4
+Copy-Item build/native-diff-round1.dll build/native-diff.dll
+python tools/build_native_app.py
+.\Start-native-development.cmd "$env:SC5_GDI"
+```
+
+The extractor opens the supplied disc read-only and writes local ignored files. The AOT generator checks executable hashes and stops on an unsupported revision. Building all four DLLs is resource intensive. The reference and frontend now build in a fresh repository-local workspace. All four modules rebuilt and passed validation; see [release validation](RELEASE-VALIDATION.md).
+
+`reports/observed-roots.json` contains deduplicated observed instruction addresses used by the generator, not game executable bytes. Unsupported execution targets stop and require an offline coverage expansion and rebuild. Additional diagnostic scripts under `tools/` may require locally generated reports or checkpoints.
+
+
+## Linux and macOS
+
+The complete dependency installation and packaging commands are maintained in [.github/workflows/release-build.yml](.github/workflows/release-build.yml). Build the host with `python tools/build_native_port.py`; build modules from the verified generated-source archive with `tools/build_release_modules.py`; package the frozen launcher with `tools/package_release.py`. Each script documents its required arguments through `--help`.
+
+The release contains corresponding project, dependency and generated sources. See [source provenance](SOURCE-PROVENANCE.md).
