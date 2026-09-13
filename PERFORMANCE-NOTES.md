@@ -1,3 +1,5 @@
+Current release-preparation results and the newer isolated driver comparison are in [RELEASE-VALIDATION.md](RELEASE-VALIDATION.md). The measurements below describe the preceding frontend update.
+
 # Audio, pacing and response measurements
 
 The 2026-09-12 frontend update starts playback after the first audio block containing sound, using the existing 64 ms buffer. Initial all-zero output is still paced. Generated audio is unchanged. The 44.1 kHz callback now requests 256 frames, and the host checks input/presentation every 100,000 native instructions.

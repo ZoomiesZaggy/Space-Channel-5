@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <thread>
 #include <atomic>
+#include <map>
 
 class NativeInput {
  struct Pulse {u64 first,last;u32 buttons;};
@@ -34,18 +35,40 @@ class NativeInput {
  std::atomic<bool> stopProbe{false};
  std::atomic<u64> probeDownCounter{0};
  std::atomic<int> probePushResult{0};
- static u32 key(SDL_Keycode key){
+ std::map<SDL_Keycode,u32> keyBindings;
+ std::vector<std::pair<SDL_GameControllerButton,u32>> padBindings;
+ bool customKeys=false;
+ u32 key(SDL_Keycode key){
+  if(customKeys){auto found=keyBindings.find(key);return found==keyBindings.end()?0:found->second;}
   switch(key){case SDLK_RETURN:return DC_BTN_START;case SDLK_UP:return DC_DPAD_UP;case SDLK_DOWN:return DC_DPAD_DOWN;
    case SDLK_LEFT:return DC_DPAD_LEFT;case SDLK_RIGHT:return DC_DPAD_RIGHT;case SDLK_z:case SDLK_SPACE:return DC_BTN_A;case SDLK_x:case SDLK_BACKSPACE:return DC_BTN_B;
    case SDLK_a:return DC_BTN_X;case SDLK_s:return DC_BTN_Y;default:return 0;}
  }
- static u32 eventKey(const SDL_KeyboardEvent &event){
+ u32 eventKey(const SDL_KeyboardEvent &event){
+  if(customKeys)return key(event.keysym.sym);
   switch(event.keysym.scancode){case SDL_SCANCODE_Z:return DC_BTN_A;case SDL_SCANCODE_X:return DC_BTN_B;
    case SDL_SCANCODE_A:return DC_BTN_X;case SDL_SCANCODE_S:return DC_BTN_Y;default:return key(event.keysym.sym);}
  }
 public:
  bool quit=false;
  explicit NativeInput(u64 start):origin(start){
+  const char *actions[]={"START","UP","DOWN","LEFT","RIGHT","A","B","X","Y"};
+  const char *defaultKeys[]={"Return","Up","Down","Left","Right","Z","X","A","S"};
+  const char *defaultPads[]={"start","dpup","dpdown","dpleft","dpright","a","b","x","y"};
+  const u32 masks[]={DC_BTN_START,DC_DPAD_UP,DC_DPAD_DOWN,DC_DPAD_LEFT,DC_DPAD_RIGHT,DC_BTN_A,DC_BTN_B,DC_BTN_X,DC_BTN_Y};
+  for(unsigned j=0;j<9;j++){
+   const std::string keyName=std::string("SC5_KEY_")+actions[j],padName=std::string("SC5_PAD_")+actions[j];
+   const char *keyText=std::getenv(keyName.c_str()),*padText=std::getenv(padName.c_str());
+   const auto code=SDL_GetKeyFromName(keyText?keyText:defaultKeys[j]);
+   if(code!=SDL_GetKeyFromName(defaultKeys[j]))customKeys=true;
+   if(code==SDLK_UNKNOWN)throw std::runtime_error("Unknown keyboard binding: "+keyName);
+   keyBindings[code]|=masks[j];
+   const auto button=SDL_GameControllerGetButtonFromString(padText?padText:defaultPads[j]);
+   if(button==SDL_CONTROLLER_BUTTON_INVALID)throw std::runtime_error("Unknown controller binding: "+padName);
+   padBindings.push_back({button,masks[j]});
+  }
+  if(keyBindings[SDLK_z]==DC_BTN_A&&!keyBindings.count(SDLK_SPACE))keyBindings[SDLK_SPACE]=DC_BTN_A;
+  if(keyBindings[SDLK_x]==DC_BTN_B&&!keyBindings.count(SDLK_BACKSPACE))keyBindings[SDLK_BACKSPACE]=DC_BTN_B;
   kcode[0]=~0u;
   if(const char *offsetText=std::getenv("SC5_INPUT_OFFSET_MS"))offset=std::stoull(offsetText,nullptr,0)*200000ull;
   if(std::getenv("SC5_CHEAT_100")){
@@ -115,10 +138,7 @@ public:
   if(controller && !SDL_GameControllerGetAttached(controller)){SDL_GameControllerClose(controller);controller=nullptr;}
   if(controllerEnabled && !controller)for(int j=0;j<SDL_NumJoysticks();j++)if(SDL_IsGameController(j)){controller=SDL_GameControllerOpen(j);if(controller){if(logInput)std::cout<<"Native controller connected="<<SDL_GameControllerName(controller)<<"\n";break;}}
   if(controller){
-   const std::pair<SDL_GameControllerButton,u32> buttons[]={{SDL_CONTROLLER_BUTTON_START,DC_BTN_START},{SDL_CONTROLLER_BUTTON_A,DC_BTN_A},{SDL_CONTROLLER_BUTTON_B,DC_BTN_B},
-    {SDL_CONTROLLER_BUTTON_X,DC_BTN_X},{SDL_CONTROLLER_BUTTON_Y,DC_BTN_Y},{SDL_CONTROLLER_BUTTON_DPAD_UP,DC_DPAD_UP},{SDL_CONTROLLER_BUTTON_DPAD_DOWN,DC_DPAD_DOWN},
-    {SDL_CONTROLLER_BUTTON_DPAD_LEFT,DC_DPAD_LEFT},{SDL_CONTROLLER_BUTTON_DPAD_RIGHT,DC_DPAD_RIGHT}};
-   for(auto button:buttons)if(SDL_GameControllerGetButton(controller,button.first))controllerButtons|=button.second;
+   for(auto button:padBindings)if(SDL_GameControllerGetButton(controller,button.first))controllerButtons|=button.second;
    joyx[0]=SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX);joyy[0]=SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY);
    joyrx[0]=SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_RIGHTX);joyry[0]=SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_RIGHTY);
    controllerLt=static_cast<u16>(std::max(0,static_cast<int>(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)))*2);

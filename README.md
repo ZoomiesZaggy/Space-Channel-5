@@ -6,11 +6,13 @@ An unofficial Windows x64 ahead-of-time (AOT) port project for the USA Dreamcast
 
 ## Status
 
-The local build completed all four reports, full credits and return to title in an uninterrupted assist-mode run with zero execution faults. Keyboard and Steam Controller operation were confirmed by the tester. The latest frontend passed matched opening and later-report replays and all 15 regression tests. This is not a claim of a complete manual playthrough or exhaustive game-path coverage.
+The local build completed all four reports, full credits and return to title in an uninterrupted assist-mode run with zero execution faults. Keyboard and Steam Controller operation were confirmed by the tester. The latest frontend passed matched opening and later-report replays and all 16 regression tests on each of four rebuilt modules. This is not a claim of a complete manual playthrough or exhaustive game-path coverage.
 
 Tested later-report scenes run at about 30 presented FPS. The latest startup test had zero audio underruns. Occasional long frame stalls remain; physical controller-to-speaker latency has not been measured. See [performance notes](PERFORMANCE-NOTES.md).
 
 ## Build on Windows
+
+For a guided build, run `Configure-and-play.cmd`, select your disc, and choose **Build from my disc**. The pinned portable compiler downloads automatically with SHA-256 verification; Git and Python must already be installed. The launcher also saves input, audio and display preferences. See [the player guide](PLAYER-GUIDE.md) and [remaining release work](ROADMAP.md).
 
 Requirements: Git, Python 3.10+, and LLVM-MinGW 20260908 x64 UCRT. Extract the portable toolchain below `work/toolchain/` so its compiler is at `work/toolchain/<toolchain-folder>/bin/clang.exe`. The reference setup installs pinned CMake and Ninja into `work/build-tools/` and downloads the pinned upstream source and submodules. Run commands from the repository root.
 
@@ -28,7 +30,7 @@ python tools/build_native_app.py
 .\Start-native-development.cmd "$env:SC5_GDI"
 ```
 
-The extractor opens the supplied disc read-only and writes local ignored files. The AOT generator checks executable hashes and stops on an unsupported revision. Building all four DLLs is resource intensive. Build scripts were used for the local port; this newly published repository layout has received static checks, not a fresh full rebuild.
+The extractor opens the supplied disc read-only and writes local ignored files. The AOT generator checks executable hashes and stops on an unsupported revision. Building all four DLLs is resource intensive. The reference and frontend now build in a fresh repository-local workspace. All four modules rebuilt and passed validation; see [release validation](RELEASE-VALIDATION.md).
 
 `reports/observed-roots.json` contains deduplicated observed instruction addresses used by the generator, not game executable bytes. Unsupported execution targets stop and require an offline coverage expansion and rebuild. Additional diagnostic scripts under `tools/` may require locally generated reports or checkpoints.
 

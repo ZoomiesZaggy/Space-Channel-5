@@ -28,6 +28,7 @@
 #include "native_audio_capture.h"
 #include "native_input.h"
 #include "native_cycle_model.h"
+#include "rend/CustomTexture.h"
 
 static u32 (*nativeState)(u32);
 static u64 busReads,busWrites;
@@ -187,6 +188,10 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
  auto setQueueWrite=(void(*)(void(*)(u32)))GetProcAddress(library,"sc5_set_queue_write");
  nativeRequire(bool(reset&&run&&nativeState&&useBus&&attachBus&&context&&setRetire),"reset&&run&&nativeState&&useBus&&attachBus&&context&&setRetire");
  nativeRequire(bool(addrspace::reserve()),"addrspace::reserve()");emu.init();mem_map_default();emu.dc_reset(true);
+ config::AudioVolume.set(nativeNumber("SC5_VOLUME",100,0,100));
+ if(config::AudioVolume.get()==100)config::AudioVolume.logarithmic_volume_scale=1.0f;
+ else config::AudioVolume.calcDbPower();
+ config::AudioBufferSize=nativeNumber("SC5_AUDIO_BUFFER_MS",64,32,128)*441/10;
  const char *discPath=std::getenv("SC5_GDI");
  const char *framePath=std::getenv("SC5_FRAME_OUTPUT");
  std::unique_ptr<NativeRenderSurface> surface;
@@ -194,6 +199,14 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
  if(discPath){
   const char *dataPath=std::getenv("SC5_RUNTIME_DATA");nativeRequire((dataPath)!=(nullptr),"ASSERT_NE dataPath");
   set_user_config_dir(dataPath);set_user_data_dir(dataPath);
+  if(nativeNumber("SC5_TEXTURE_PACKS",0,0,1)||std::getenv("SC5_DUMP_TEXTURES")){
+   settings.content.gameId="MK-51051";
+   config::TexturePath=std::vector<std::string>{std::string(dataPath)+"mods"};
+   config::CustomTextures=nativeNumber("SC5_TEXTURE_PACKS",0,0,1)!=0;config::PreloadCustomTextures=true;
+   config::DumpTextures=std::getenv("SC5_DUMP_TEXTURES")!=nullptr;
+   config::TextureDumpPath=std::string(dataPath)+"texture-dumps";
+   custom_texture.init();
+  }
   std::cout<<"Mounting read-only GDI"<<std::endl;
   nativeRequire(bool(gdr::initDrive(discPath)),"gdr::initDrive(discPath)");std::cout<<"Initializing native BIOS services"<<std::endl;
   nativeRequire(bool(nvmem::loadHle()),"nvmem::loadHle()");std::cout<<"Disc services ready"<<std::endl;

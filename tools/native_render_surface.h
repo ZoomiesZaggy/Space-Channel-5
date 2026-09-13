@@ -5,6 +5,7 @@
 #include "hw/pvr/Renderer_if.h"
 #include "ui/imgui_driver.h"
 #include "rend/TexCache.h"
+#include "rend/CustomTexture.h"
 #include "rend/gles/gles.h"
 #include <windows.h>
 #include <SDL.h>
@@ -12,6 +13,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <algorithm>
+#include "native_settings.h"
 
 class NativeRenderSurface final : public GLGraphicsContext {
  SDL_Window *surface=nullptr;
@@ -33,13 +35,15 @@ public:
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION,3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
-  surface=SDL_CreateWindow("Space Channel 5 native development",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,640,480,SDL_WINDOW_OPENGL|(std::getenv("SC5_VISIBLE")?SDL_WINDOW_SHOWN:SDL_WINDOW_HIDDEN));
+  const int scale=nativeNumber("SC5_WINDOW_SCALE",1,1,4);
+  const bool fullscreen=nativeNumber("SC5_FULLSCREEN",0,0,1)!=0;
+  surface=SDL_CreateWindow("Space Channel 5",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,640*scale,480*scale,SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|(std::getenv("SC5_VISIBLE")?SDL_WINDOW_SHOWN:SDL_WINDOW_HIDDEN)|(fullscreen?SDL_WINDOW_FULLSCREEN_DESKTOP:0));
   if(!surface)throw std::runtime_error(SDL_GetError());
   window=surface;context=SDL_GL_CreateContext(surface);
   if(!context)throw std::runtime_error(SDL_GetError());
   std::cout<<"Render surface: OpenGL context created"<<std::endl;
   if(!gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress)||!GLAD_GL_VERSION_3_0)throw std::runtime_error("OpenGL 3 required");
-  SDL_GL_SetSwapInterval(0);settings.display.width=640;settings.display.height=480;
+  SDL_GL_SetSwapInterval(nativeNumber("SC5_VSYNC",0,0,1));SDL_GL_GetDrawableSize(surface,&settings.display.width,&settings.display.height);
   // No emulator UI: only the GL capabilities and native game renderer are needed.
   findGLVersion();
   config::RendererType=RenderType::OpenGL;config::ThreadedRendering=false;
@@ -53,6 +57,7 @@ public:
   std::cout<<"Render surface: ready"<<std::endl;
  }
  ~NativeRenderSurface(){
+  custom_texture.terminate();
   if(!frameIntervals.empty()){
    std::sort(frameIntervals.begin(),frameIntervals.end());
    const auto n=frameIntervals.size();size_t slow=0;

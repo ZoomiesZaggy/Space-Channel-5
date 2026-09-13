@@ -2,6 +2,8 @@
 import argparse, hashlib, json, pathlib, sys, re
 from boot_probe import ROOT, generate
 from build_aot_split import build
+from build_paths import keep_awake
+keep_awake()
 
 ap=argparse.ArgumentParser();ap.add_argument('--cc',required=True);ap.add_argument('--opt',choices=['0','1','2'],default='2');ap.add_argument('--round',type=int,action='append');ap.add_argument('--output-dir',type=pathlib.Path,default=ROOT/'build');ap.add_argument('--cpu',choices=['x86-64','x86-64-v3']);ap.add_argument('--no-math-errno',action='store_true');ap.add_argument('--cache-tag',default='');a=ap.parse_args()
 if a.cache_tag and not re.fullmatch('[A-Za-z0-9_-]+',a.cache_tag):ap.error('cache tag must contain only letters, numbers, underscores, or hyphens')
@@ -12,6 +14,7 @@ roots=[int(x['pc'],16) for x in records]
 rounds=a.round or [2,3,4]
 reports=[]
 for number in rounds:
+ print(f'Generating ROUND{number} native code…',flush=True)
  data=(ROOT/'extracted'/f'ROUND{number}.BIN').read_bytes()
  digest=hashlib.sha256(data).hexdigest()
  import boot_probe as probe

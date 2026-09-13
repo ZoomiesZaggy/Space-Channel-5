@@ -1,0 +1,19 @@
+name: Source checks
+on: [push, pull_request]
+jobs:
+  source:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m compileall -q tools prototype
+      - run: python tools/test_player_config.py
+      - name: Keep game data and private files out of Git
+        shell: python
+        run: |
+          import pathlib, subprocess
+          files = subprocess.check_output(['git', 'ls-files'], text=True).splitlines()
+          forbidden = {'.bin', '.gdi', '.cdi', '.chd', '.dll', '.exe', '.wav', '.vmu'}
+          assert not [f for f in files if pathlib.Path(f).suffix.lower() in forbidden or f.startswith(('userdata/', 'extracted/', 'build/'))]

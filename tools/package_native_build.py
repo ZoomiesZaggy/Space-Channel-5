@@ -24,9 +24,9 @@ def copy(source,relative,allowed_root=ROOT):
     target.parent.mkdir(parents=True,exist_ok=True)
     shutil.copy2(source,target)
 
-for name in ['README.md','README-history.md','DEVELOPMENT.md','Start-native-development.cmd']:
+for name in ['README.md','Start-native-development.cmd','Configure-and-play.cmd']:
     copy(ROOT/name,pathlib.Path(name))
-for name in ['DEVELOPMENT-history.md','STEAM-CONTROLLER.md','PERFORMANCE-NOTES.md']:
+for name in ['DEVELOPMENT.md','README-history.md','DEVELOPMENT-history.md','STEAM-CONTROLLER.md','PERFORMANCE-NOTES.md','PLAYER-GUIDE.md','ROADMAP.md','RELEASE-VALIDATION.md']:
     if (ROOT/name).exists():copy(ROOT/name,pathlib.Path(name))
 for name in ['sc5-native-dev.exe','libwinpthread-1.dll','native-diff.dll']+[f'native-diff-round{i}.dll' for i in range(1,5)]:
     copy(args.binary_dir/name,pathlib.Path('build')/name,args.binary_dir)
@@ -60,7 +60,7 @@ for record_name in ['native-clean-playthrough-validation.json',
                     'native-delivery-clean-validation.json',
                     'native-delivery-failure-flow-validation.json',
                     'native-delivery-controller-validation.json',
-                    'native-polish-validation.json']:
+                    'native-polish-validation.json', 'native-release-prep-validation.json']:
     record=ROOT/'reports'/record_name
     if not record.exists():continue
     copy(record,pathlib.Path('reports')/record.name)
@@ -77,8 +77,7 @@ for source in reference.rglob('*'):
     '# Local source provenance\n\n'
     'This personal build uses the original USA GDI at runtime; disc tracks and private VMU test data are not packaged. '
     'The generator, native host sources, extracted executable images, dependency notices, and pinned-source patch are included.\n\n'
-    'The complete local Flycast source checkout used for this build remains at:\n\n'
-    f'`{reference}`\n\n'
+    'The pinned upstream Flycast source is reconstructed by `tools/setup_reference.py`; the included patch contains the local reference changes.\n\n'
     'Pinned revision: `eddf2635867f0f16f64bebd3185db151c99c551c`. '
     '`tools/setup_reference.py` records the pinned revision, dependencies, and build configuration. '
     'The original Forge decoder license is retained under `prototype/Dreamcast-Forge`.\n')

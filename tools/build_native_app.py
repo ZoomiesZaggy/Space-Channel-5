@@ -5,11 +5,12 @@ The reusable device library still contains upstream CPU implementations; the
 native host's execution path exclusively calls sc5_run_chunk from its AOT DLL.
 """
 import argparse,ctypes,json,os,pathlib,subprocess,shutil
-ROOT=pathlib.Path(__file__).resolve().parents[1];WORK=ROOT/'work';BUILD=WORK/'flycast-build'
+from build_paths import ROOT, WORK, compiler as find_compiler
+BUILD=WORK/'flycast-build'
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output',type=pathlib.Path,default=ROOT/'build/sc5-native-dev.exe',help='Optional staged executable path for rebuilding while the game is running')
 args=parser.parse_args()
-compiler=next((WORK/'toolchain').glob('*/bin/clang++.exe')).resolve()
+compiler=find_compiler(True)
 env=os.environ.copy();env['PATH']=str(compiler.parent)+os.pathsep+env['PATH']
 database=json.loads(subprocess.check_output([str(WORK/'build-tools/bin/ninja.exe'),'-C',str(BUILD),'-t','compdb','-x'],text=True))
 shell=ctypes.windll.shell32;shell.CommandLineToArgvW.argtypes=[ctypes.c_wchar_p,ctypes.POINTER(ctypes.c_int)];shell.CommandLineToArgvW.restype=ctypes.POINTER(ctypes.c_wchar_p)

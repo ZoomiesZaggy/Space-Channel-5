@@ -90,9 +90,35 @@ TEST(Sc5NativeDifferential, NativeSdlInputWithoutPhysicalHardware){
   ASSERT_EQ(SDL_JoystickSetVirtualButton(joystick,button.first,1),0);SDL_JoystickUpdate();host.events();host.update(0);ASSERT_EQ((~kcode[0])&0xffffu,button.second);
   ASSERT_EQ(SDL_JoystickSetVirtualButton(joystick,button.first,0),0);SDL_JoystickUpdate();host.events();host.update(0);ASSERT_EQ(kcode[0]&0xffffu,0xffffu);
  }
+ {const char *old=std::getenv("SC5_PAD_A");
+  struct RestorePad{std::string value;~RestorePad(){_putenv_s("SC5_PAD_A",value.c_str());}} restorePad{old?old:""};
+  _putenv_s("SC5_PAD_A","rightshoulder");
+  {NativeInput remapped(0);
+   ASSERT_EQ(SDL_JoystickSetVirtualButton(joystick,SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,1),0);
+   SDL_JoystickUpdate();remapped.events();remapped.update(0);EXPECT_EQ((~kcode[0])&0xffffu,DC_BTN_A);
+   SDL_JoystickSetVirtualButton(joystick,SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,0);
+  }
+ }
  ASSERT_EQ(SDL_JoystickSetVirtualAxis(joystick,SDL_CONTROLLER_AXIS_LEFTX,-12345),0);ASSERT_EQ(SDL_JoystickSetVirtualAxis(joystick,SDL_CONTROLLER_AXIS_LEFTY,23456),0);
  SDL_JoystickUpdate();host.events();host.update(0);ASSERT_EQ(joyx[0],-12345);ASSERT_EQ(joyy[0],23456);
  std::cout<<"Synthetic SDL keyboard, focus release, virtual controller buttons and axes reach native Maple input state; physical hardware not tested\n";
+}
+
+TEST(Sc5NativeDifferential, RemappedKeyboardPreservesShortTaps){
+ const char *old=std::getenv("SC5_KEY_A");
+ struct Restore{std::string value;~Restore(){_putenv_s("SC5_KEY_A",value.c_str());}} restore{old?old:""};
+ _putenv_s("SC5_KEY_A","Q");
+ ASSERT_EQ(SDL_InitSubSystem(SDL_INIT_EVENTS),0);
+ {NativeInput host(0);
+  SDL_Event tap{};tap.type=SDL_KEYDOWN;tap.key.keysym.sym=SDLK_q;SDL_PushEvent(&tap);
+  tap.type=SDL_KEYUP;SDL_PushEvent(&tap);host.events();
+  host.update(0,false);EXPECT_EQ((~kcode[0])&0xffffu,DC_BTN_A);
+  host.update(1);EXPECT_EQ((~kcode[0])&0xffffu,DC_BTN_A);
+  host.update(2);EXPECT_EQ(kcode[0]&0xffffu,0xffffu);
+  tap.type=SDL_KEYDOWN;tap.key.keysym.sym=SDLK_z;SDL_PushEvent(&tap);host.events();host.update(3);
+  EXPECT_EQ(kcode[0]&0xffffu,0xffffu);
+ }
+ SDL_QuitSubSystem(SDL_INIT_EVENTS);
 }
 
 TEST(Sc5NativeDifferential, DiagnosticAssistProducesExactControllerChord){

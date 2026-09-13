@@ -58,7 +58,7 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
         if not math_errno:command+=['-fno-math-errno']
         result=subprocess.run(command,capture_output=True,text=True)
         if result.returncode:raise RuntimeError(result.stdout+result.stderr)
-        stamp.write_text(digest);return str(obj),True
+        stamp.write_text(digest);print(f'Compiled {name}',flush=True);return str(obj),True
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
         results=list(pool.map(compile_unit,units.items()))
     command=[cc,'-shared',*[obj for obj,changed in results],'-o',str(pathlib.Path(output).resolve())]

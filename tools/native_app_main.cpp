@@ -2,15 +2,20 @@
 #define SDL_MAIN_HANDLED
 #include "native_device_runtime.h"
 #include "native_cpu_placement.h"
+#include "native_settings.h"
+#include "native_latency_probe.h"
 #include <filesystem>
 
 int main(int argc,char **argv){
  try {
   SDL_SetMainReady();
+  std::cout<<std::unitbuf;
+  if(argc==2&&std::string(argv[1])=="--latency-test")return runNativeLatencyProbe();
   struct AwakeGuard{AwakeGuard(){SetThreadExecutionState(ES_CONTINUOUS|ES_SYSTEM_REQUIRED);}~AwakeGuard(){SetThreadExecutionState(ES_CONTINUOUS);}} awake;
   std::cout<<std::unitbuf;
   NativeCpuPlacement cpuPlacement;
   auto root=std::filesystem::absolute(argv[0]).parent_path().parent_path();
+  if(!std::getenv("SC5_IGNORE_SETTINGS"))loadNativeSettings(root/"userdata/settings.ini");
   auto defaultEnv=[](const char *name,const std::string &value){if(!std::getenv(name))_putenv_s(name,value.c_str());};
   defaultEnv("SC5_NATIVE_DLL",(root/"build/native-diff.dll").string());
   defaultEnv("SC5_MODULE_DLL_DIR",(root/"build").string());
