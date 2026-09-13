@@ -23,7 +23,7 @@ def validate(values):
     offset = result['rhythm_offset_ms']
     if not offset.lstrip('-').isdigit() or offset.startswith('--') or not -250 <= int(offset) <= 250:
         raise ValueError('Invalid rhythm timing offset')
-    if result['native_mod'] and not pathlib.PureWindowsPath(result['native_mod']).is_absolute():
+    if result['native_mod'] and not (pathlib.PureWindowsPath(result['native_mod']).is_absolute() or pathlib.Path(result['native_mod']).is_absolute()):
         raise ValueError('Native mod path must be absolute')
     for prefix, allowed in (('key_', KEYS), ('pad_', PADS)):
         bindings = [result[prefix + a] for a in ACTIONS]

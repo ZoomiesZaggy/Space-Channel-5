@@ -8,9 +8,13 @@ import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+from import_game import import_game, installed
 from player_config import ACTIONS, DEFAULTS, KEYS, PADS, load, save
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+FROZEN = getattr(sys, 'frozen', False)
+ROOT = pathlib.Path(sys.executable).resolve().parent if FROZEN else pathlib.Path(__file__).resolve().parents[1]
+EXECUTABLE = 'build/sc5-native-dev.exe' if os.name == 'nt' else 'build/sc5-native-dev'
+SUFFIX = '.dll' if os.name == 'nt' else '.dylib' if sys.platform == 'darwin' else '.so' 
 
 class Launcher:
     def __init__(self):
@@ -72,7 +76,7 @@ class Launcher:
         self.play_button = ttk.Button(buttons, text='Play directly', command=self.play); self.play_button.pack(side='left', padx=10)
         if self.steam_id:
             ttk.Button(buttons, text='Play via Steam', command=self.play_steam).pack(side='left', padx=(0, 10))
-        self.build_button = ttk.Button(buttons, text='Build from my disc…', command=self.build); self.build_button.pack(side='left')
+        self.build_button = ttk.Button(buttons, text='Import my disc…' if FROZEN else 'Build from my disc…', command=self.build); self.build_button.pack(side='left')
         ttk.Button(play, text='Input/audio measurement test', command=self.probe).pack(anchor='w', pady=12)
         ttk.Label(controls, text='Action').grid(row=0, column=0, padx=8, pady=8)
         ttk.Label(controls, text='Keyboard').grid(row=0, column=1, padx=8)
@@ -113,14 +117,20 @@ class Launcher:
         gdi = pathlib.Path(self.vars['gdi'].get())
         if not gdi.is_file():
             messagebox.showerror('Select your disc', 'Choose the original USA .gdi file first.'); return
-        required = ['build/sc5-native-dev.exe', 'build/native-diff.dll', 'build/libwinpthread-1.dll', 'extracted/1ST_READ.BIN'] + [f'build/native-diff-round{i}.dll' for i in range(1, 5)]
+        if FROZEN and not installed(ROOT):
+            try:
+                import_game(gdi, ROOT)
+                self.messages.put('Disc imported. No compilation needed.\n')
+            except Exception as error:
+                messagebox.showerror('Disc import failed', str(error)); return
+        required = [EXECUTABLE, 'build/native-diff' + SUFFIX, 'extracted/1ST_READ.BIN'] + [f'build/native-diff-round{i}{SUFFIX}' for i in range(1, 5)]
         if any(not (ROOT / p).is_file() for p in required):
-            messagebox.showinfo('Build required', 'Use “Build from my disc…” to create your personal build first.'); return
+            messagebox.showinfo('Missing game files', 'Extract the complete release archive again.' if FROZEN else 'Use “Build from my disc…” to create your personal build first.'); return
         if self.building or (self.game and self.game.poll() is None): return
         log = (ROOT / 'userdata/last-launch.log').open('w', encoding='utf-8')
         try:
             self.game_log = 'userdata/last-launch.log'
-            self.game = subprocess.Popen([str(ROOT / 'build/sc5-native-dev.exe'), '--gdi', str(gdi.resolve())], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+            self.game = subprocess.Popen([str(ROOT / EXECUTABLE), '--gdi', str(gdi.resolve())], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
             self.play_button.configure(state='disabled'); self.build_button.configure(state='disabled')
             self.messages.put('Game launched. Close the game before changing settings.\n')
         except OSError as error:
@@ -129,6 +139,14 @@ class Launcher:
             log.close()
 
     def build(self):
+        if FROZEN:
+            if self.building or not self.save() or not self.game_stopped(): return
+            try:
+                count = import_game(self.vars['gdi'].get(), ROOT)
+                self.messages.put(f'Imported {count} game files. Ready to play.\n')
+            except Exception as error:
+                messagebox.showerror('Disc import failed', str(error))
+            return
         if self.building or not self.save() or not self.game_stopped(): return
         self.building = True
         gdi_path = self.vars['gdi'].get()
@@ -146,7 +164,7 @@ class Launcher:
         threading.Thread(target=worker, daemon=True).start()
 
     def game_stopped(self):
-        executable = ROOT / 'build/sc5-native-dev.exe'
+        executable = ROOT / EXECUTABLE
         if executable.exists():
             try:
                 # Windows denies a writable handle while the executable is
@@ -166,7 +184,7 @@ class Launcher:
             messagebox.showerror('Steam launch failed', str(error))
 
     def probe(self):
-        executable = ROOT / 'build/sc5-native-dev.exe'
+        executable = ROOT / EXECUTABLE
         if self.building or (self.game and self.game.poll() is None): return
         if not executable.is_file():
             messagebox.showinfo('Build required', 'Build the native application first.'); return
@@ -200,4 +218,7 @@ class Launcher:
         self.window.destroy()
 
 if __name__ == '__main__':
-    Launcher().window.mainloop()
+    if len(sys.argv) == 3 and sys.argv[1] == '--import-disc':
+        import_game(sys.argv[2], ROOT)
+    else:
+        Launcher().window.mainloop()
