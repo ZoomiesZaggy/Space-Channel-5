@@ -15,10 +15,16 @@
 #include <stdexcept>
 #include <algorithm>
 #include "native_settings.h"
+#include "native_motion_renderer.h"
+#include "rend/gles/glcache.h"
 
 class NativeRenderSurface final : public GLGraphicsContext {
  SDL_Window *surface=nullptr;
  SDL_GLContext context=nullptr;
+ NativeMotionRenderer *motion=nullptr;
+ Uint64 pendingPresent=0;
+ int displayMode=0;
+ unsigned midpointPresents=0,completedPresents=0;
  std::unique_ptr<NativeTextureWriteWatch> textureWriteHandler;
  Uint64 firstPresent=0,lastPresent=0;
  std::vector<double> frameIntervals;
@@ -33,7 +39,8 @@ public:
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
   const int scale=nativeNumber("SC5_WINDOW_SCALE",1,1,4);
   const bool fullscreen=nativeNumber("SC5_FULLSCREEN",0,0,1)!=0;
-  surface=SDL_CreateWindow("Space Channel 5",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,640*scale,480*scale,SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|(std::getenv("SC5_VISIBLE")?SDL_WINDOW_SHOWN:SDL_WINDOW_HIDDEN)|(fullscreen?SDL_WINDOW_FULLSCREEN_DESKTOP:0));
+  displayMode=nativeNumber("SC5_DISPLAY_MODE",0,0,3);
+  surface=SDL_CreateWindow("Space Channel 5",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,(displayMode?854:640)*scale,480*scale,SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|(std::getenv("SC5_VISIBLE")?SDL_WINDOW_SHOWN:SDL_WINDOW_HIDDEN)|(fullscreen?SDL_WINDOW_FULLSCREEN_DESKTOP:0));
   if(!surface)throw std::runtime_error(SDL_GetError());
   window=surface;context=SDL_GL_CreateContext(surface);
   if(!context)throw std::runtime_error(SDL_GetError());
@@ -44,6 +51,7 @@ public:
   findGLVersion();
   config::RendererType=RenderType::OpenGL;config::ThreadedRendering=false;
   std::cout<<"Render surface: PVR renderer initialization"<<std::endl;
+  if(nativeNumber("SC5_MOTION_INTERPOLATION",0,0,1)){motion=new NativeMotionRenderer();renderer=motion;}
   if(!rend_init_renderer())throw std::runtime_error("Native device renderer initialization failed");
   if(std::getenv("SC5_QUAD_PRESENT"))gl.bogusBlitFramebuffer=true;
   // Texture caching protects VRAM pages. Handle only writes to those pages;
@@ -53,6 +61,7 @@ public:
   std::cout<<"Render surface: ready"<<std::endl;
  }
  ~NativeRenderSurface(){
+  if(motion)std::cout<<"Native interpolation presentation midpoint="<<midpointPresents<<" completed="<<completedPresents<<"\n";
   custom_texture.terminate();
   if(!frameIntervals.empty()){
    std::sort(frameIntervals.begin(),frameIntervals.end());
@@ -73,7 +82,14 @@ public:
   GLint previousDraw=0,previousRead=0;
   glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING,&previousDraw);glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING,&previousRead);
   glBindFramebuffer(GL_FRAMEBUFFER,0);
-  const bool available=renderer->RenderLastFrame();
+  bool available=false;
+  GlFramebuffer *frame=motion&&motion->midpointReady?motion->midpoint.get():nullptr;
+  if(frame){midpointPresents++;pendingPresent=SDL_GetPerformanceCounter()+SDL_GetPerformanceFrequency()/60;motion->midpointReady=false;}
+  else pendingPresent=0;
+  if(frame || displayMode>=2){
+   if(!frame)frame=gl.ofbo2.ready?gl.ofbo2.framebuffer.get():gl.ofbo.framebuffer.get();
+   if(frame){drawFrame(frame);available=true;}
+  }else available=renderer->RenderLastFrame();
   if(std::getenv("SC5_LOG_PRESENT")){
    static unsigned samples=0;
    if(samples++<10){
@@ -100,6 +116,31 @@ public:
   }
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER,previousDraw);glBindFramebuffer(GL_READ_FRAMEBUFFER,previousRead);
   return available;
+ }
+ void drawFrame(GlFramebuffer *frame){
+  int width=settings.display.width,height=settings.display.height;
+  int x=0,y=0,sw=frame->getWidth(),sh=frame->getHeight();
+  int dx=0,dy=0;
+  const double aspect=gl.ofbo.aspectRatio,windowAspect=double(width)/height;
+  if(displayMode==2){
+   if(windowAspect>aspect){const int cropped=int(sh*aspect/windowAspect);y=(sh-cropped)/2;sh=cropped;}
+   else {const int cropped=int(sw*windowAspect/aspect);x=(sw-cropped)/2;sw=cropped;}
+  }else if(displayMode!=3){
+   if(windowAspect>aspect)dx=(width-int(height*aspect))/2;
+   else dy=(height-int(width/aspect))/2;
+  }
+  glcache.Disable(GL_SCISSOR_TEST);glcache.ClearColor(0,0,0,1);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER,0);glClear(GL_COLOR_BUFFER_BIT);
+  frame->bind(GL_READ_FRAMEBUFFER);
+  glBlitFramebuffer(x,y,x+sw,y+sh,dx,height-dy,width-dx,dy,GL_COLOR_BUFFER_BIT,GL_LINEAR);
+  glBindFramebuffer(GL_FRAMEBUFFER,0);
+ }
+ void pump(){
+  if(!pendingPresent || SDL_GetPerformanceCounter()<pendingPresent)return;
+  pendingPresent=0;
+  SDL_GL_GetDrawableSize(surface,&settings.display.width,&settings.display.height);
+  auto *frame=gl.ofbo2.ready?gl.ofbo2.framebuffer.get():gl.ofbo.framebuffer.get();
+  if(frame){drawFrame(frame);swap();completedPresents++;}
  }
  static bool capture(const char *path){
   std::vector<u8> pixels;int width=0,height=0;

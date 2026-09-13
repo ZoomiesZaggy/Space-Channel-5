@@ -333,7 +333,7 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
    do{nextCheckpoint+=checkpointInterval;}while(nextCheckpoint<=retired);
   }
   if(completed==0)break;
-  if(surface)inputHost->events();
+  if(surface){surface->pump();inputHost->events();}
   if(stopPath&&nativeMilliseconds()-lastStopPoll>=100){
    lastStopPoll=nativeMilliseconds();
    if(nativePathExists(stopPath)){std::cout<<"Native graceful stop requested by file="<<stopPath<<"\n";break;}
