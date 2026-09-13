@@ -24,7 +24,7 @@ def copy(source,relative,allowed_root=ROOT):
     target.parent.mkdir(parents=True,exist_ok=True)
     shutil.copy2(source,target)
 
-for name in ['README.md','Start-native-development.cmd','Configure-and-play.cmd']:
+for name in ['README.md','LICENSE','Start-native-development.cmd','Configure-and-play.cmd']:
     copy(ROOT/name,pathlib.Path(name))
 for name in ['DEVELOPMENT.md','README-history.md','DEVELOPMENT-history.md','STEAM-CONTROLLER.md','PERFORMANCE-NOTES.md','PLAYER-GUIDE.md','ROADMAP.md','RELEASE-VALIDATION.md']:
     if (ROOT/name).exists():copy(ROOT/name,pathlib.Path(name))

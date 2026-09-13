@@ -1,5 +1,6 @@
 """Disc selection, personal builds and persistent player settings."""
 import os
+import json
 import pathlib
 import queue
 import subprocess
@@ -27,6 +28,13 @@ class Launcher:
         self.building = False
         self.game = None
         self.game_log = 'userdata/last-launch.log'
+        self.steam_id = ''
+        try:
+            steam = json.loads((ROOT / 'userdata/steam-launch.json').read_text())
+            value = str(steam.get('game_id', ''))
+            if value.isdigit() and len(value) <= 20: self.steam_id = value
+        except (OSError, ValueError, TypeError, AttributeError):
+            pass
         self.window.protocol('WM_DELETE_WINDOW', self.close)
         tabs = ttk.Notebook(self.window)
         tabs.pack(fill='both', expand=True, padx=16, pady=12)
@@ -49,7 +57,9 @@ class Launcher:
         ttk.Label(play, text='Settings apply on the next launch. Saves stay in userdata.\nFullscreen keeps the original game aspect ratio.', wraplength=600).pack(anchor='w', pady=18)
         buttons = ttk.Frame(play); buttons.pack(fill='x')
         ttk.Button(buttons, text='Save settings', command=self.save).pack(side='left')
-        self.play_button = ttk.Button(buttons, text='Play', command=self.play); self.play_button.pack(side='left', padx=10)
+        self.play_button = ttk.Button(buttons, text='Play directly', command=self.play); self.play_button.pack(side='left', padx=10)
+        if self.steam_id:
+            ttk.Button(buttons, text='Play via Steam', command=self.play_steam).pack(side='left', padx=(0, 10))
         self.build_button = ttk.Button(buttons, text='Build from my disc…', command=self.build); self.build_button.pack(side='left')
         ttk.Button(play, text='Input/audio measurement test', command=self.probe).pack(anchor='w', pady=12)
         ttk.Label(controls, text='Action').grid(row=0, column=0, padx=8, pady=8)
@@ -83,7 +93,7 @@ class Launcher:
             return False
 
     def play(self):
-        if not self.save(): return
+        if not self.save() or not self.game_stopped(): return
         gdi = pathlib.Path(self.vars['gdi'].get())
         if not gdi.is_file():
             messagebox.showerror('Select your disc', 'Choose the original USA .gdi file first.'); return
@@ -103,7 +113,7 @@ class Launcher:
             log.close()
 
     def build(self):
-        if self.building or not self.save(): return
+        if self.building or not self.save() or not self.game_stopped(): return
         self.building = True
         gdi_path = self.vars['gdi'].get()
         self.build_button.configure(state='disabled'); self.play_button.configure(state='disabled')
@@ -118,6 +128,26 @@ class Launcher:
             finally:
                 self.messages.put(None)
         threading.Thread(target=worker, daemon=True).start()
+
+    def game_stopped(self):
+        executable = ROOT / 'build/sc5-native-dev.exe'
+        if executable.exists():
+            try:
+                # Windows denies a writable handle while the executable is
+                # mapped by a running game. No bytes are written here.
+                with executable.open('r+b'): pass
+            except PermissionError:
+                messagebox.showinfo('Game is running', 'Close the game before building or starting another session.')
+                return False
+        return True
+
+    def play_steam(self):
+        if self.building or not self.save() or not self.game_stopped(): return
+        try:
+            os.startfile('steam://rungameid/' + self.steam_id)
+            self.messages.put('Launched your existing Steam shortcut with Steam Input.\n')
+        except OSError as error:
+            messagebox.showerror('Steam launch failed', str(error))
 
     def probe(self):
         executable = ROOT / 'build/sc5-native-dev.exe'
