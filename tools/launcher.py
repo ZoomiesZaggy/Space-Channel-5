@@ -30,7 +30,10 @@ class Launcher:
     def __init__(self):
         self.window = tk.Tk()
         self.window.title('Space Channel 5')
-        self.window.geometry('720x720')
+        self.window.geometry('1180x900')
+        self.window.minsize(1060, 900)
+        self.window.configure(bg='#0c1022')
+        self.theme()
         self.path = ROOT / 'userdata/settings.ini'
         try:
             values = load(self.path)
@@ -50,15 +53,42 @@ class Launcher:
         except (OSError, ValueError, TypeError, AttributeError):
             pass
         self.window.protocol('WM_DELETE_WINDOW', self.close)
-        tabs = ttk.Notebook(self.window)
-        tabs.pack(fill='both', expand=True, padx=16, pady=12)
-        play, controls = ttk.Frame(tabs, padding=12), ttk.Frame(tabs, padding=12)
-        tabs.add(play, text='Play')
-        graphics = ttk.Frame(tabs, padding=12)
-        tabs.add(graphics, text='Display')
-        tabs.add(controls, text='Controls')
-        mods = ttk.Frame(tabs, padding=12)
-        tabs.add(mods, text='Mods')
+        asset_root = pathlib.Path(getattr(sys, '_MEIPASS', APP_ROOT))
+        artwork = asset_root / 'docs/assets/ulala-spaceship-banner.png'
+        self.hero = tk.Canvas(self.window, height=290, bg='#0c1022', highlightthickness=0)
+        self.hero.pack(fill='x')
+        if artwork.exists():
+            self.hero_original = tk.PhotoImage(file=str(artwork))
+            self.hero_image = self.hero_original.subsample(2)
+            self.hero.create_image(590, 145, image=self.hero_image, tags='art')
+            self.hero.bind('<Configure>', lambda e: self.hero.coords('art', e.width / 2, 145))
+        else:
+            self.hero.create_text(45, 120, anchor='w', text='SPACE CHANNEL 5', fill='white', font=('Segoe UI', 42, 'bold'))
+        shell = ttk.Frame(self.window)
+        shell.pack(fill='both', expand=True, padx=24, pady=(8, 12))
+        navigation = ttk.Frame(shell, width=190)
+        navigation.pack(side='left', fill='y', padx=(0, 24))
+        ttk.Label(navigation, text='CHANNEL 05', style='Eyebrow.TLabel').pack(anchor='w', pady=(12, 20))
+        content = ttk.Frame(shell)
+        content.pack(side='left', fill='both', expand=True)
+        content.rowconfigure(0, weight=1); content.columnconfigure(0, weight=1)
+        self.pages = {}
+        self.navigation = {}
+        for name in ('Play', 'Controls', 'Settings', 'Audio', 'Mods'):
+            page = ttk.Frame(content, padding=20, style='Card.TFrame')
+            page.grid(row=0, column=0, sticky='nsew')
+            self.pages[name] = page
+            button = ttk.Button(navigation, text=name, style='Nav.TButton', command=lambda n=name: self.show_page(n))
+            button.pack(fill='x', pady=5)
+            self.navigation[name] = button
+        ttk.Button(navigation, text='Exit', style='Nav.TButton', command=self.close).pack(fill='x', pady=(30, 5))
+        ttk.Label(navigation, text='DESKTOP PREVIEW', style='Eyebrow.TLabel').pack(side='bottom', anchor='w', pady=10)
+        play, controls, graphics, mods = (self.pages[n] for n in ('Play', 'Controls', 'Settings', 'Mods'))
+        audio = self.pages['Audio']
+        ttk.Label(audio, text='Audio & rhythm', style='Title.TLabel').pack(anchor='w', pady=(0, 16))
+        ttk.Button(audio, text='Save audio settings', command=self.save).pack(side='bottom', anchor='w', pady=10)
+        ttk.Label(play, text='Ready for your next report?', style='Title.TLabel').pack(anchor='w', pady=(0, 8))
+        ttk.Label(play, text='Select your original USA Dreamcast disc, then jump in.', wraplength=650).pack(anchor='w', pady=(0, 20))
         ttk.Label(mods, text='Native mod (optional)', font=('', 12, 'bold')).pack(anchor='w')
         ttk.Label(mods, text='Choose a trusted native mod library. Leave this empty to play without native mods.\nMods run code on your PC and may change gameplay or saves.', wraplength=600).pack(anchor='w', pady=12)
         mod_row = ttk.Frame(mods); mod_row.pack(fill='x')
@@ -71,12 +101,12 @@ class Launcher:
         row = ttk.Frame(play); row.pack(fill='x', pady=6)
         ttk.Entry(row, textvariable=self.vars['gdi']).pack(side='left', fill='x', expand=True)
         ttk.Button(row, text='Browse…', command=self.browse).pack(side='left', padx=6)
-        ttk.Label(play, text='Music and sound volume').pack(anchor='w', pady=(12, 0))
-        ttk.Spinbox(play, from_=0, to=100, textvariable=self.vars['volume'], width=8).pack(anchor='w')
-        ttk.Label(play, text='Audio buffer in ms (smaller reduces buffering; increase if audio breaks up)').pack(anchor='w', pady=(8, 0))
-        ttk.Combobox(play, textvariable=self.vars['audio_buffer_ms'], values=('32', '48', '64', '96', '128'), state='readonly', width=8).pack(anchor='w')
-        ttk.Label(play, text='Rhythm timing offset in ms (positive accepts later responses)').pack(anchor='w', pady=(8, 0))
-        ttk.Spinbox(play, from_=-250, to=250, increment=25, textvariable=self.vars['rhythm_offset_ms'], width=8).pack(anchor='w')
+        ttk.Label(audio, text='Music and sound volume').pack(anchor='w', pady=(12, 0))
+        ttk.Spinbox(audio, from_=0, to=100, textvariable=self.vars['volume'], width=8).pack(anchor='w')
+        ttk.Label(audio, text='Audio buffer in ms (smaller reduces buffering; increase if audio breaks up)').pack(anchor='w', pady=(8, 0))
+        ttk.Combobox(audio, textvariable=self.vars['audio_buffer_ms'], values=('32', '48', '64', '96', '128'), state='readonly', width=8).pack(anchor='w')
+        ttk.Label(audio, text='Rhythm timing offset in ms (positive accepts later responses)').pack(anchor='w', pady=(8, 0))
+        ttk.Spinbox(audio, from_=-250, to=250, increment=25, textvariable=self.vars['rhythm_offset_ms'], width=8).pack(anchor='w')
         ttk.Checkbutton(graphics, text='Fullscreen', variable=self.vars['fullscreen'], onvalue='1', offvalue='0').pack(anchor='w', pady=4)
         ttk.Checkbutton(graphics, text='VSync', variable=self.vars['vsync'], onvalue='1', offvalue='0').pack(anchor='w')
         ttk.Label(graphics, text='Picture layout', font=('', 12, 'bold')).pack(anchor='w', pady=(10, 4))
@@ -92,7 +122,7 @@ class Launcher:
         ttk.Button(graphics, text='Save settings', command=self.save).pack(anchor='w')
         buttons = ttk.Frame(play); buttons.pack(fill='x')
         ttk.Button(buttons, text='Save settings', command=self.save).pack(side='left')
-        self.play_button = ttk.Button(buttons, text='Play directly', command=self.play); self.play_button.pack(side='left', padx=10)
+        self.play_button = ttk.Button(buttons, text='▶  PLAY', style='Play.TButton', command=self.play); self.play_button.pack(side='left', padx=10)
         if self.steam_id:
             ttk.Button(buttons, text='Play via Steam', command=self.play_steam).pack(side='left', padx=(0, 10))
         self.build_button = ttk.Button(buttons, text='Import my disc…' if FROZEN else 'Build from my disc…', command=self.build); self.build_button.pack(side='left')
@@ -106,9 +136,48 @@ class Launcher:
             for column, prefix, choices in ((1, 'key_', KEYS), (2, 'pad_', PADS)):
                 ttk.Combobox(controls, textvariable=self.vars[prefix+action], values=choices, state='readonly', width=18).grid(row=row, column=column, padx=8)
         ttk.Button(controls, text='Restore default controls', command=self.reset_controls).grid(row=10, column=0, columnspan=3, pady=12)
-        self.log = tk.Text(self.window, height=8, state='disabled', wrap='word')
-        self.log.pack(fill='x', padx=16, pady=(0, 12))
+        ttk.Button(self.window, text='Activity / troubleshooting', command=self.toggle_log).pack(anchor='w', padx=24, pady=(0, 6))
+        ttk.Button(controls, text='Save controls', command=self.save).grid(row=11, column=0, columnspan=3, pady=8)
+        self.log_window = tk.Toplevel(self.window)
+        self.log_window.title('Space Channel 5 — Activity')
+        self.log_window.geometry('780x300')
+        self.log_window.protocol('WM_DELETE_WINDOW', self.log_window.withdraw)
+        self.log_window.withdraw()
+        self.log = tk.Text(self.log_window, height=4, state='disabled', wrap='word', bg='#080c19', fg='#bec8e4', relief='flat', font=('Consolas', 9))
+        self.log.pack(fill='both', expand=True)
+        self.show_page('Play')
         self.window.after(200, self.poll)
+
+    def theme(self):
+        style = ttk.Style(self.window)
+        style.theme_use('clam')
+        style.configure('.', background='#131a30', foreground='#e8edff', font=('Segoe UI', 10))
+        style.configure('TFrame', background='#0c1022')
+        style.configure('Card.TFrame', background='#131a30')
+        style.configure('TLabel', background='#131a30')
+        style.configure('Title.TLabel', font=('Segoe UI', 23, 'bold'), foreground='#ffffff')
+        style.configure('Eyebrow.TLabel', background='#0c1022', foreground='#aa9bef', font=('Segoe UI', 10, 'bold'))
+        style.configure('TButton', padding=(14, 8), borderwidth=0, background='#283653')
+        style.map('TButton', background=[('active', '#405478'), ('disabled', '#20283a')], foreground=[('disabled', '#7f8aa5')])
+        style.configure('Nav.TButton', padding=(18, 14), anchor='w', font=('Segoe UI', 15), background='#0c1022')
+        style.configure('Selected.Nav.TButton', background='#343054', foreground='#d6caff')
+        style.configure('Play.TButton', background='#ff9254', foreground='#101327', font=('Segoe UI', 17, 'bold'), padding=(28, 14))
+        style.map('Play.TButton', background=[('active', '#ffb479'), ('disabled', '#564334')])
+        style.configure('TEntry', fieldbackground='#090f20', insertcolor='white', padding=7)
+        style.configure('TCombobox', fieldbackground='#090f20', arrowcolor='#ff9254', padding=5)
+        style.map('TCombobox', fieldbackground=[('readonly', '#090f20')], foreground=[('readonly', '#e8edff')])
+        style.configure('TSpinbox', fieldbackground='#090f20', arrowcolor='#ff9254', padding=5)
+        self.window.option_add('*TCombobox*Listbox.background', '#131a30')
+        self.window.option_add('*TCombobox*Listbox.foreground', '#e8edff')
+
+    def show_page(self, name):
+        self.pages[name].tkraise()
+        for label, button in self.navigation.items():
+            button.configure(style='Selected.Nav.TButton' if label == name else 'Nav.TButton')
+
+    def toggle_log(self):
+        self.log_window.deiconify()
+        self.log_window.lift()
 
     def browse(self):
         path = filedialog.askopenfilename(filetypes=[('Dreamcast GDI', '*.gdi')])

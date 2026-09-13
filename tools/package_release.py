@@ -31,6 +31,7 @@ def main():
     stage = WORK / 'release-freeze'
     subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onedir',
                     '--windowed', '--name', 'SpaceChannel5', '--distpath', str(stage / 'dist'),
+                    '--add-data', str(ROOT / 'docs/assets') + os.pathsep + 'docs/assets',
                     '--workpath', str(stage / 'build'), '--specpath', str(stage),
                     str(ROOT / 'tools/launcher.py')], check=True)
     if sys.platform == 'darwin':
