@@ -67,6 +67,8 @@ def main():
     files = {file.relative_to(output).as_posix(): hashlib.sha256(file.read_bytes()).hexdigest()
              for file in output.rglob('*') if file.is_file()}
     (output / 'release-manifest.json').write_text(json.dumps(files, indent=2))
+    launcher = application / ('SpaceChannel5.exe' if os.name == 'nt' else 'SpaceChannel5')
+    subprocess.run([str(launcher), '--check-installation'], check=True)
     print('Release directory:', output)
 
 if __name__ == '__main__':

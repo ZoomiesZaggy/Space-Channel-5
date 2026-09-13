@@ -240,7 +240,17 @@ class Launcher:
         self.window.destroy()
 
 if __name__ == '__main__':
-    if len(sys.argv) == 3 and sys.argv[1] == '--import-disc':
+    if sys.argv[1:] == ['--check-installation']:
+        # Exercise the frozen Tcl runtime and native dynamic dependencies without
+        # requiring a display, game disc or writes to the player's data directory.
+        tk.Tcl().eval('info patchlevel')
+        for number in range(1, 5):
+            if not (APP_ROOT / f'build/native-diff-round{number}{SUFFIX}').is_file():
+                raise SystemExit('Missing native game module')
+        subprocess.run([str(APP_ROOT / EXECUTABLE), '--help'], env=game_environment(), check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    elif len(sys.argv) == 3 and sys.argv[1] == '--import-disc':
         import_game(sys.argv[2], ROOT)
     else:
         Launcher().window.mainloop()
