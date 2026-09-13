@@ -7,6 +7,7 @@ This tracks the requested progression toward a polished PC port. It does not cla
 - Repository-local builds with explicit toolchain/work-directory overrides.
 - Disc selection, guided builds and persistent settings in a launcher.
 - Volume, audio buffering, display options and keyboard/controller remapping.
+- Manual rhythm calibration that shifts the game’s input-task beat clock using the active tempo; default 0 ms.
 - A standalone input/audio probe for physical-measurement recordings.
 - Optional texture replacement through the existing renderer.
 - Experimental native mod ABI with compatibility checks, RAM access and lifecycle/frame callbacks (see NATIVE-MODS.md).
@@ -19,7 +20,7 @@ The clean four-DLL build, 64 native test passes, settings tests and matched repl
 ## Remaining comparison goals
 
 - Address remaining game-frame gaps: the traced 72 ms interval includes 66.79 ms of emulated time between game frames; presentation takes about 0.5 ms.
-- Identify and patch rhythm-judgement timing for an actual calibration offset.
+- Complete hands-on calibration checks across a full manual playthrough; the timing patch and automated boundary tests are implemented.
 - Record physical controller-to-speaker latency and complete a manual playthrough.
 - Test on additional, less powerful PCs.
 - Implement game-aware widescreen, including backgrounds, HUD and clipping fixes.

@@ -29,3 +29,11 @@ This supports texture replacement, not executable mods or game-logic hooks. Synt
 ## Native mods (experimental)
 
 The launcher’s Mods tab lets you choose one trusted native mod DLL. Leave the field empty, or select Disable native mod and save, for ordinary play. Restart the game after changing this selection. See NATIVE-MODS.md for the developer API and its current limits.
+
+## Rhythm calibration
+
+Use **Rhythm timing offset** in the launcher, save, and restart the game. The default is **0 ms**. Positive values move the response window later; negative values move it earlier. Try small changes such as 25 ms while playing a familiar section. The supported range is −250 to +250 ms.
+
+This adjusts the game’s input-task timing against its current music tempo. It does not speed up the game or change the music playback clock, and it does not intentionally widen the original note windows. Judgments still have the original game-frame granularity. Input-related feedback and missed-note processing follow the shifted input timing.
+
+The separate Input/audio measurement test is a measurement aid; it does not choose this setting automatically. The automated tests establish that the judging window moves, not the right value for your display, speakers or controller.

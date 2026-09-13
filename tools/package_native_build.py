@@ -26,7 +26,7 @@ def copy(source,relative,allowed_root=ROOT):
 
 for name in ['README.md','LICENSE','Start-native-development.cmd','Configure-and-play.cmd']:
     copy(ROOT/name,pathlib.Path(name))
-for name in ['DEVELOPMENT.md','README-history.md','DEVELOPMENT-history.md','STEAM-CONTROLLER.md','PERFORMANCE-NOTES.md','PLAYER-GUIDE.md','ROADMAP.md','RELEASE-VALIDATION.md','NATIVE-MODS.md']:
+for name in ['DEVELOPMENT.md','README-history.md','DEVELOPMENT-history.md','STEAM-CONTROLLER.md','PERFORMANCE-NOTES.md','PLAYER-GUIDE.md','ROADMAP.md','RELEASE-VALIDATION.md','NATIVE-MODS.md','CALIBRATION-VALIDATION.md']:
     if (ROOT/name).exists():copy(ROOT/name,pathlib.Path(name))
 for name in ['sc5-native-dev.exe','libwinpthread-1.dll','native-diff.dll']+[f'native-diff-round{i}.dll' for i in range(1,5)]:
     copy(args.binary_dir/name,pathlib.Path('build')/name,args.binary_dir)
@@ -60,7 +60,7 @@ for record_name in ['native-clean-playthrough-validation.json',
                     'native-delivery-clean-validation.json',
                     'native-delivery-failure-flow-validation.json',
                     'native-delivery-controller-validation.json',
-                    'native-polish-validation.json', 'native-release-prep-validation.json', 'native-mod-validation.json']:
+                    'native-polish-validation.json', 'native-release-prep-validation.json', 'native-mod-validation.json', 'native-calibration-validation.json']:
     record=ROOT/'reports'/record_name
     if not record.exists():continue
     copy(record,pathlib.Path('reports')/record.name)

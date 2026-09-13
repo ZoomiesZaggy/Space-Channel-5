@@ -16,7 +16,7 @@ class Launcher:
     def __init__(self):
         self.window = tk.Tk()
         self.window.title('Space Channel 5')
-        self.window.geometry('720x650')
+        self.window.geometry('720x720')
         self.path = ROOT / 'userdata/settings.ini'
         try:
             values = load(self.path)
@@ -59,6 +59,8 @@ class Launcher:
         ttk.Spinbox(play, from_=0, to=100, textvariable=self.vars['volume'], width=8).pack(anchor='w')
         ttk.Label(play, text='Audio buffer in ms (smaller reduces buffering; increase if audio breaks up)').pack(anchor='w', pady=(8, 0))
         ttk.Combobox(play, textvariable=self.vars['audio_buffer_ms'], values=('32', '48', '64', '96', '128'), state='readonly', width=8).pack(anchor='w')
+        ttk.Label(play, text='Rhythm timing offset in ms (positive accepts later responses)').pack(anchor='w', pady=(8, 0))
+        ttk.Spinbox(play, from_=-250, to=250, increment=25, textvariable=self.vars['rhythm_offset_ms'], width=8).pack(anchor='w')
         ttk.Checkbutton(play, text='Fullscreen', variable=self.vars['fullscreen'], onvalue='1', offvalue='0').pack(anchor='w', pady=8)
         ttk.Checkbutton(play, text='VSync (may increase latency; off by default)', variable=self.vars['vsync'], onvalue='1', offvalue='0').pack(anchor='w')
         ttk.Checkbutton(play, text='Use texture packs from userdata/mods/MK-51051', variable=self.vars['texture_packs'], onvalue='1', offvalue='0').pack(anchor='w', pady=8)

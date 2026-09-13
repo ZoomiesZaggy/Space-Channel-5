@@ -29,6 +29,8 @@
 #include "native_input.h"
 #include "native_cycle_model.h"
 #include "native_mod_runtime.h"
+#include "native_rhythm_calibration.h"
+#include "native_dispatch_trace.h"
 #include "rend/CustomTexture.h"
 
 static u32 (*nativeState)(u32);
@@ -63,7 +65,11 @@ static void pullContext(){
  n->mach=ctx->mac.h;n->macl=ctx->mac.l;
  n->gbr=ctx->gbr;n->vbr=ctx->vbr;n->ssr=ctx->ssr;n->spc=ctx->spc;n->sgr=ctx->sgr;n->dbr=ctx->dbr;n->fpul=ctx->fpul;n->fpscr=ctx->fpscr.full;
 }
+static NativeRhythmCalibration nativeRhythmCalibration;
+static NativeDispatchTrace nativeDispatchTrace;
 static int nativeService(u32 pc){
+ nativeRhythmCalibration.dispatch(pc,*nativeContext);
+ nativeDispatchTrace.record(pc,*nativeContext);
  const u32 address=(pc&0x1fffffffu)|0x80000000u;
  switch(address){case 0x8c001002:case 0x8c001004:case 0x8c001006:case 0x8c001008:case 0x8c0010f0:break;default:return 0;}
  const bool gdService=(address==0x8c001006||address==0x8c0010f0)&&nativeContext->r[6]==0;
@@ -298,6 +304,8 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
   std::cout<<"Switched native AOT to ROUND"<<module<<" module\n";
  };
  if(checkpointModule!=1)switchModule(checkpointModule);
+ nativeDispatchTrace.configure();
+ nativeRhythmCalibration.configure();
  NativeModSession mods;
  if(std::getenv("SC5_AUDIO_OUTPUT")||std::getenv("SC5_PLAY_AUDIO"))audio=std::make_unique<NativeAudioSession>();
  while(retired<budget && !nativeState(20) && !inputHost->quit){
@@ -330,6 +338,8 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
    if(GetFileAttributesA(stopPath)!=INVALID_FILE_ATTRIBUTES){std::cout<<"Native graceful stop requested by file="<<stopPath<<"\n";break;}
   }
  }
+ nativeDispatchTrace.finish(startTicks);
+ std::cout<<"Native rhythm calibration applications="<<nativeRhythmCalibration.count()<<"\n";
  const double wallSeconds=std::chrono::duration<double>(std::chrono::steady_clock::now()-wallStart).count();
  clockActive=false;
  os_InputUpdateOverride=nullptr;nativeInput=nullptr;inputHost.reset();

@@ -50,3 +50,7 @@ An initial native mod interface now provides version/size/game checks, bounded R
 Actual gameplay calibration, physical latency measurement, a full manual playthrough, other PCs, game-aware widescreen, interpolation and native Linux/macOS support remain pending.
 
 Final follow-up checks: saved mod selection loaded successfully; missing-export and incompatible-ABI libraries were rejected. The final default Report 3 replay preserved RAM and PCM. Its final image differs in 509 RGB channels, all at x=639 (y=75..336), consistent with the previously recorded right-edge variation. The opening replay with the example mod remains byte-identical in RAM, PCM and image.
+
+## Rhythm calibration follow-up
+
+Manual rhythm calibration is now implemented and tested. The latest frontend is `71c639ea7aedc29f54e0026cd252be11fa1349839537457d5c6cc3408138c44c`. See [calibration validation](CALIBRATION-VALIDATION.md) for the judging-window sweep, exact zero-offset replay checks, later-round smoke tests and remaining physical-test limitations.
