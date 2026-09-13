@@ -4,6 +4,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import platform
 from build_paths import ROOT, WORK
 
 REVISION = 'eddf2635867f0f16f64bebd3185db151c99c551c'
@@ -45,8 +46,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME sc5-native-dev MACO
         text = text.replace('elseif(APPLE)\n\t\tstring(TIMESTAMP YEAR', 'elseif(APPLE AND NOT SC5_HOST_TOOLS)\n\t\tstring(TIMESTAMP YEAR')
         text += '''
 if(APPLE AND SC5_HOST_TOOLS)
-  target_sources(${PROJECT_NAME} PRIVATE shell/apple/common/http_client.mm)
-  target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Foundation")
+  target_sources(${PROJECT_NAME} PRIVATE shell/apple/common/http_client.mm "${SC5_HOST_TOOLS}/native_platform_macos.mm")
+  find_library(SC5_MULTITOUCH MultitouchSupport /System/Library/PrivateFrameworks REQUIRED)
+  target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Foundation" ${SC5_MULTITOUCH})
 endif()
 '''
         cmake.write_text(text)
@@ -55,10 +57,12 @@ endif()
     if sys.platform == 'darwin':
         sdk = subprocess.check_output(['xcrun', '--show-sdk-path'], text=True).strip()
         platform_flags.append(f'-DZLIB_LIBRARY={sdk}/usr/lib/libz.tbd')
+        platform_flags.append(f'-DCMAKE_OSX_ARCHITECTURES={platform.machine()}')
     run('cmake', '-S', source, '-B', build, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', *platform_flags,
         '-DENABLE_CTEST=ON', '-DBUILD_TESTING=ON', f'-DSC5_HOST_TOOLS={ROOT / "tools"}',
         '-DUSE_VULKAN=OFF', '-DUSE_DX9=OFF', '-DUSE_DX11=OFF', '-DUSE_BREAKPAD=OFF',
         '-DUSE_LUA=OFF', '-DUSE_OPENMP=OFF', '-DUSE_HOST_SDL=OFF', '-DUSE_HOST_LIBZIP=OFF',
+        '-DFT_DISABLE_PNG=ON', '-DFT_DISABLE_BZIP2=ON', '-DFT_DISABLE_BROTLI=ON', '-DFT_DISABLE_HARFBUZZ=ON',
         '-DCMAKE_POLICY_VERSION_MINIMUM=3.5')
     run('cmake', '--build', build, '--target', 'flycast', '--parallel', args.jobs)
     run(build / ('sc5-native-dev.exe' if os.name == 'nt' else 'sc5-native-dev'), '--help')
