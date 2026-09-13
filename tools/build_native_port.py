@@ -47,6 +47,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME sc5-native-dev MACO
         text = cmake.read_text()
         # The native host supplies its own event loop, write-fault watch and platform hooks.
         text = text.replace('core/linux/common.cpp', '')
+        text = text.replace('if (NOT NINTENDO_SWITCH)\n\t\t\t# DreamLink', 'if (NOT NINTENDO_SWITCH AND NOT SC5_HOST_TOOLS)\n\t\t\t# DreamLink')
         text = text.replace('elseif(APPLE)\n\t\tstring(TIMESTAMP YEAR', 'elseif(APPLE AND NOT SC5_HOST_TOOLS)\n\t\tstring(TIMESTAMP YEAR')
         text += '''
 if(APPLE AND SC5_HOST_TOOLS)
@@ -66,6 +67,7 @@ endif()
         '-DUSE_VULKAN=OFF', '-DUSE_DX9=OFF', '-DUSE_DX11=OFF', '-DUSE_BREAKPAD=OFF',
         '-DUSE_LUA=OFF', '-DUSE_OPENMP=OFF', '-DUSE_HOST_SDL=OFF', '-DUSE_HOST_LIBZIP=OFF',
         '-DFT_DISABLE_PNG=ON', '-DFT_DISABLE_BZIP2=ON', '-DFT_DISABLE_BROTLI=ON', '-DFT_DISABLE_HARFBUZZ=ON',
+        '-DSDL_SHARED=OFF', '-DSDL_STATIC=ON',
         '-DCMAKE_POLICY_VERSION_MINIMUM=3.5')
     run('cmake', '--build', build, '--target', 'flycast', '--parallel', args.jobs)
     run(build / ('sc5-native-dev.exe' if os.name == 'nt' else 'sc5-native-dev'), '--help')

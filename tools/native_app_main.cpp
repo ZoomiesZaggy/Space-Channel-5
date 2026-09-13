@@ -15,12 +15,13 @@ int main(int argc,char **argv){
   std::cout<<std::unitbuf;
   NativeCpuPlacement cpuPlacement;
   auto root=std::filesystem::absolute(argv[0]).parent_path().parent_path();
-  if(!std::getenv("SC5_IGNORE_SETTINGS"))loadNativeSettings(root/"userdata/settings.ini");
+  const auto userRoot=std::getenv("SC5_USER_ROOT")?std::filesystem::path(std::getenv("SC5_USER_ROOT")):root;
+  if(!std::getenv("SC5_IGNORE_SETTINGS"))loadNativeSettings(userRoot/"userdata/settings.ini");
   auto defaultEnv=[](const char *name,const std::string &value){if(!std::getenv(name))nativeSetEnvironment(name,value.c_str());};
   defaultEnv("SC5_NATIVE_DLL",(root/(std::string("build/native-diff")+nativeLibrarySuffix())).string());
   defaultEnv("SC5_MODULE_DLL_DIR",(root/"build").string());
-  defaultEnv("SC5_IMAGE",(root/"extracted/1ST_READ.BIN").string());
-  defaultEnv("SC5_RUNTIME_DATA",(root/"userdata").string()+"/");
+  defaultEnv("SC5_IMAGE",(userRoot/"extracted/1ST_READ.BIN").string());
+  defaultEnv("SC5_RUNTIME_DATA",(userRoot/"userdata").string()+"/");
   defaultEnv("SC5_INSTRUCTION_BUDGET","0");
   defaultEnv("SC5_VISIBLE","1");defaultEnv("SC5_PLAY_AUDIO","1");
   defaultEnv("SC5_DEFER_SILENT_AUDIO","1");

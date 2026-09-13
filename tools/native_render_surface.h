@@ -100,12 +100,7 @@ public:
    }
   }
   if(available)swap();
-  if(available && std::getenv("SC5_LOG_PACING")){
-   const Uint64 now=SDL_GetPerformanceCounter(),frequency=SDL_GetPerformanceFrequency();
-   if(!firstPresent)firstPresent=now;
-   if(lastPresent && now-firstPresent>=frequency*5)frameIntervals.push_back((now-lastPresent)*1000.0/frequency);
-   lastPresent=now;
-  }
+  if(available)recordPresentation();
   if(std::getenv("SC5_LOG_PRESENT")){
    static unsigned frontSamples=0;
    if(frontSamples++<3){
@@ -116,6 +111,13 @@ public:
   }
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER,previousDraw);glBindFramebuffer(GL_READ_FRAMEBUFFER,previousRead);
   return available;
+ }
+ void recordPresentation(){
+  if(!std::getenv("SC5_LOG_PACING"))return;
+  const Uint64 now=SDL_GetPerformanceCounter(),frequency=SDL_GetPerformanceFrequency();
+  if(!firstPresent)firstPresent=now;
+  if(lastPresent && now-firstPresent>=frequency*5)frameIntervals.push_back((now-lastPresent)*1000.0/frequency);
+  lastPresent=now;
  }
  void drawFrame(GlFramebuffer *frame){
   int width=settings.display.width,height=settings.display.height;
@@ -140,7 +142,7 @@ public:
   pendingPresent=0;
   SDL_GL_GetDrawableSize(surface,&settings.display.width,&settings.display.height);
   auto *frame=gl.ofbo2.ready?gl.ofbo2.framebuffer.get():gl.ofbo.framebuffer.get();
-  if(frame){drawFrame(frame);swap();completedPresents++;}
+  if(frame){drawFrame(frame);swap();recordPresentation();completedPresents++;}
  }
  static bool capture(const char *path){
   std::vector<u8> pixels;int width=0,height=0;

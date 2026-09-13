@@ -54,13 +54,13 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
     shared_cache=ROOT/'build/aot-shared-objects';shared_cache.mkdir(exist_ok=True)
     def compile_unit(item):
         name,body=item; path=directory/(name+'.c'); obj=directory/(name+'.obj'); stamp=directory/(name+'.sha256')
-        digest=hashlib.sha256((identity+target+opt+str(cpu)+str(math_errno)+dependency_hash+header+body).encode()).hexdigest()
+        digest=hashlib.sha256((identity+target+opt+str(cpu)+str(math_errno)+'no-fp-contract-v1'+dependency_hash+header+body).encode()).hexdigest()
         if obj.exists() and stamp.exists() and stamp.read_text()==digest:return str(obj),False
         cached=shared_cache/(digest+'.obj')
         if cached.exists():
             shutil.copy2(cached,obj);stamp.write_text(digest);return str(obj),False
         path.write_text(body)
-        command=[cc,'-O'+opt,'-std=c99','-c',str(path),'-o',str(obj)]
+        command=[cc,'-O'+opt,'-std=c99','-ffp-contract=off','-c',str(path),'-o',str(obj)]
         if not windows:command+=['-fPIC']
         if cpu:command+=['-march='+cpu]
         if not math_errno:command+=['-fno-math-errno']

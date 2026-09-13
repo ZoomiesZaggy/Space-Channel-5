@@ -12,7 +12,17 @@ from import_game import import_game, installed
 from player_config import ACTIONS, DEFAULTS, KEYS, PADS, load, save
 
 FROZEN = getattr(sys, 'frozen', False)
-ROOT = pathlib.Path(sys.executable).resolve().parent if FROZEN else pathlib.Path(__file__).resolve().parents[1]
+APP_ROOT = pathlib.Path(sys.executable).resolve().parent if FROZEN else pathlib.Path(__file__).resolve().parents[1]
+ROOT = APP_ROOT
+if FROZEN and sys.platform == 'darwin':
+    ROOT = pathlib.Path.home() / 'Library/Application Support/SpaceChannel5'
+elif FROZEN and sys.platform.startswith('linux'):
+    ROOT = pathlib.Path(os.environ.get('XDG_DATA_HOME', pathlib.Path.home() / '.local/share')) / 'SpaceChannel5'
+def game_environment():
+    env = dict(os.environ, SC5_USER_ROOT=str(ROOT))
+    if 'LD_LIBRARY_PATH_ORIG' in env: env['LD_LIBRARY_PATH'] = env['LD_LIBRARY_PATH_ORIG']
+    elif FROZEN: env.pop('LD_LIBRARY_PATH', None)
+    return env
 EXECUTABLE = 'build/sc5-native-dev.exe' if os.name == 'nt' else 'build/sc5-native-dev'
 SUFFIX = '.dll' if os.name == 'nt' else '.dylib' if sys.platform == 'darwin' else '.so' 
 
@@ -50,7 +60,7 @@ class Launcher:
         mods = ttk.Frame(tabs, padding=12)
         tabs.add(mods, text='Mods')
         ttk.Label(mods, text='Native mod (optional)', font=('', 12, 'bold')).pack(anchor='w')
-        ttk.Label(mods, text='Choose a trusted mod DLL. Leave this empty to play without native mods.\nMods run code on your PC and may change gameplay or saves.', wraplength=600).pack(anchor='w', pady=12)
+        ttk.Label(mods, text='Choose a trusted native mod library. Leave this empty to play without native mods.\nMods run code on your PC and may change gameplay or saves.', wraplength=600).pack(anchor='w', pady=12)
         mod_row = ttk.Frame(mods); mod_row.pack(fill='x')
         ttk.Entry(mod_row, textvariable=self.vars['native_mod']).pack(side='left', fill='x', expand=True)
         ttk.Button(mod_row, text='Browse…', command=self.browse_mod).pack(side='left', padx=6)
@@ -105,7 +115,7 @@ class Launcher:
         if path: self.vars['gdi'].set(path)
 
     def browse_mod(self):
-        path = filedialog.askopenfilename(filetypes=[('Native mod', '*.dll')])
+        path = filedialog.askopenfilename(filetypes=[('Native mod', '*' + SUFFIX)])
         if path: self.vars['native_mod'].set(path)
 
     def reset_controls(self):
@@ -133,13 +143,13 @@ class Launcher:
             except Exception as error:
                 messagebox.showerror('Disc import failed', str(error)); return
         required = [EXECUTABLE, 'build/native-diff' + SUFFIX, 'extracted/1ST_READ.BIN'] + [f'build/native-diff-round{i}{SUFFIX}' for i in range(1, 5)]
-        if any(not (ROOT / p).is_file() for p in required):
+        if any(not ((ROOT if p.startswith('extracted/') else APP_ROOT) / p).is_file() for p in required):
             messagebox.showinfo('Missing game files', 'Extract the complete release archive again.' if FROZEN else 'Use “Build from my disc…” to create your personal build first.'); return
         if self.building or (self.game and self.game.poll() is None): return
         log = (ROOT / 'userdata/last-launch.log').open('w', encoding='utf-8')
         try:
             self.game_log = 'userdata/last-launch.log'
-            self.game = subprocess.Popen([str(ROOT / EXECUTABLE), '--gdi', str(gdi.resolve())], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+            self.game = subprocess.Popen([str(APP_ROOT / EXECUTABLE), '--gdi', str(gdi.resolve())], cwd=ROOT, env=game_environment(), stdout=log, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
             self.play_button.configure(state='disabled'); self.build_button.configure(state='disabled')
             self.messages.put('Game launched. Close the game before changing settings.\n')
         except OSError as error:
@@ -173,8 +183,9 @@ class Launcher:
         threading.Thread(target=worker, daemon=True).start()
 
     def game_stopped(self):
-        executable = ROOT / EXECUTABLE
-        if executable.exists():
+        executable = APP_ROOT / EXECUTABLE
+        if self.game and self.game.poll() is None: return False
+        if os.name == 'nt' and executable.exists():
             try:
                 # Windows denies a writable handle while the executable is
                 # mapped by a running game. No bytes are written here.
@@ -187,13 +198,15 @@ class Launcher:
     def play_steam(self):
         if self.building or not self.save() or not self.game_stopped(): return
         try:
-            os.startfile('steam://rungameid/' + self.steam_id)
+            uri = 'steam://rungameid/' + self.steam_id
+            if os.name == 'nt': os.startfile(uri)
+            else: subprocess.Popen(['open' if sys.platform == 'darwin' else 'xdg-open', uri])
             self.messages.put('Launched your existing Steam shortcut with Steam Input.\n')
         except OSError as error:
             messagebox.showerror('Steam launch failed', str(error))
 
     def probe(self):
-        executable = ROOT / EXECUTABLE
+        executable = APP_ROOT / EXECUTABLE
         if self.building or (self.game and self.game.poll() is None): return
         if not executable.is_file():
             messagebox.showinfo('Build required', 'Build the native application first.'); return
@@ -202,7 +215,7 @@ class Launcher:
         try:
             with (ROOT / 'userdata/latency-test.log').open('w') as log:
                 self.game_log = 'userdata/latency-test.log'
-                self.game = subprocess.Popen([str(executable), '--latency-test'], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+                self.game = subprocess.Popen([str(executable), '--latency-test'], cwd=ROOT, env=game_environment(), stdout=log, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         except OSError as error:
             messagebox.showerror('Measurement test failed', str(error)); return
         self.play_button.configure(state='disabled'); self.build_button.configure(state='disabled')

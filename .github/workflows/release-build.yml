@@ -32,10 +32,17 @@ jobs:
       - run: python tools/test_native_host_os.py --compiler c++
       - run: python tools/build_native_port.py --jobs 3
       - run: python tools/build_release_modules.py --archive work/native-aot-source.tar.gz --sha256 534e48bf347113b5c31c0270ab0434a0691b6b9e35114482a8af1a6273c2edd9 --jobs 2
+      - run: python tools/test_release_modules.py
       - run: python tools/package_release.py --host-dir work/native-port-build --module-dir build --output work/SpaceChannel5
-      - name: Archive build
+      - name: Archive Linux build
+        if: runner.os == 'Linux'
         run: python -c "import shutil; shutil.make_archive('SpaceChannel5-${{ runner.os }}-${{ runner.arch }}','gztar','work','SpaceChannel5')"
+      - name: Archive macOS app
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent work/SpaceChannel5 SpaceChannel5-${{ runner.os }}-${{ runner.arch }}.zip
       - uses: actions/upload-artifact@v4
         with:
           name: SpaceChannel5-${{ runner.os }}-${{ runner.arch }}
-          path: SpaceChannel5-*.tar.gz
+          path: |
+            SpaceChannel5-*.tar.gz
+            SpaceChannel5-*.zip

@@ -33,8 +33,14 @@ def main():
                     '--windowed', '--name', 'SpaceChannel5', '--distpath', str(stage / 'dist'),
                     '--workpath', str(stage / 'build'), '--specpath', str(stage),
                     str(ROOT / 'tools/launcher.py')], check=True)
-    shutil.copytree(stage / 'dist/SpaceChannel5', output)
-    binary = output / 'build'
+    if sys.platform == 'darwin':
+        output.mkdir(parents=True)
+        shutil.copytree(stage / 'dist/SpaceChannel5.app', output / 'SpaceChannel5.app', symlinks=True)
+        application = output / 'SpaceChannel5.app/Contents/MacOS'
+    else:
+        shutil.copytree(stage / 'dist/SpaceChannel5', output)
+        application = output
+    binary = application / 'build'
     binary.mkdir()
     shutil.copy2(args.host_dir / executable, binary / executable)
     for module in modules:
@@ -44,6 +50,10 @@ def main():
         shutil.copy2(args.host_dir / 'libwinpthread-1.dll', binary / 'libwinpthread-1.dll')
     shutil.copy2(ROOT / 'LICENSE', output / 'LICENSE')
     shutil.copytree(ROOT / 'licenses', output / 'licenses')
+    if sys.platform == 'darwin':
+        for module in binary.iterdir():
+            subprocess.run(['codesign', '--force', '--sign', '-', str(module)], check=True)
+        subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(output / 'SpaceChannel5.app')], check=True)
     (output / 'README.txt').write_text(
         'Space Channel 5 native port\n\n'
         'Run SpaceChannel5, select your original USA GDI, then Play.\n'
