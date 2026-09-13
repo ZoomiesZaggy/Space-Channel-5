@@ -37,8 +37,12 @@ def main():
         tests = source / 'tests/CMakeLists.txt'
         tests.write_text('''# Standalone native entry point; no reference CPU test execution.
 target_sources(${PROJECT_NAME} PRIVATE "${SC5_HOST_TOOLS}/native_app_main.cpp" "${SC5_HOST_TOOLS}/native_platform.cpp")
+target_compile_definitions(${PROJECT_NAME} PRIVATE SC5_NATIVE_HOST)
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME sc5-native-dev MACOSX_BUNDLE FALSE WIN32_EXECUTABLE FALSE)
 ''')
+        sdl = source / 'core/sdl/sdl.cpp'
+        text = sdl.read_text().replace('#ifdef __APPLE__\n\t\tsdl_keyboard', '#if defined(__APPLE__) && !defined(SC5_NATIVE_HOST)\n\t\tsdl_keyboard')
+        sdl.write_text(text)
         cmake = source / 'CMakeLists.txt'
         text = cmake.read_text()
         # The native host supplies its own event loop, write-fault watch and platform hooks.
@@ -47,8 +51,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME sc5-native-dev MACO
         text += '''
 if(APPLE AND SC5_HOST_TOOLS)
   target_sources(${PROJECT_NAME} PRIVATE shell/apple/common/http_client.mm "${SC5_HOST_TOOLS}/native_platform_macos.mm")
-  find_library(SC5_MULTITOUCH MultitouchSupport /System/Library/PrivateFrameworks REQUIRED)
-  target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Foundation" ${SC5_MULTITOUCH})
+  target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Foundation")
 endif()
 '''
         cmake.write_text(text)
