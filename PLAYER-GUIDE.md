@@ -1,16 +1,26 @@
 # Player settings and texture packs
 
-Run `Configure-and-play.cmd` with Python 3.10+ installed. Select your original USA GDI. Choose **Build from my disc** if you have not built the port. The launcher downloads the pinned portable LLVM-MinGW compiler automatically, verifies its SHA-256, and keeps it under work/toolchain. Git and Python must be installed. The launcher invokes extraction, dependency setup, generation and compilation. Build failures appear in its log; the original disc is read-only.
+For a download package, extract it and run **SpaceChannel5** (the application bundle on macOS). Select your original USA GDI, keeping all its track files together, then choose **Play**. The launcher validates and imports the supported executable files automatically. No Python, Git or compiler is required, and the original disc is read-only. Keep the disc available for background video, music and other assets during play.
+
+Windows downloads keep imported files and `userdata` beside the launcher. macOS uses `~/Library/Application Support/SpaceChannel5`; Linux uses `$XDG_DATA_HOME/SpaceChannel5` or `~/.local/share/SpaceChannel5`. Preserve `userdata` when updating. Only one game can use a save directory at once.
+
+Developers running the source launcher through `Configure-and-play.cmd` need Python and Git; **Build from my disc** downloads and verifies the portable compiler and builds locally.
 
 Settings are saved atomically to `userdata/settings.ini` and read by the native executable, including through Steam. Environment variables override saved settings; `--gdi` overrides the saved disc path. Diagnostic runners can set `SC5_IGNORE_SETTINGS=1`.
 
 - Volume: 0–100; zero mutes, 100 preserves the original mix.
 - Audio buffer: 32–128 ms, default 64. Smaller buffers provide less protection against stalls. This is not a rhythm-judgement offset.
-- Fullscreen, resizable window, and 1×–4× initial window size retain the original aspect ratio.
+- Fullscreen, resizable window, and 1×–4× initial window size are configurable.
 - VSync is optional and off by default; it can add latency.
 - Keyboard and controller actions can be remapped independently. Default Space/Backspace aliases remain available unless reassigned.
 
 Settings apply on the next launch. Launch through Steam to retain Steam Input's controller translation. The launcher does not modify Steam configuration.
+
+## Display options
+
+Original 4:3 is the default. Widescreen fit preserves the whole picture with sidebars. Fill crops the top and bottom and can hide HUD elements. Stretch fills the window with altered proportions. Expanded 16:9 is experimental: it widens the geometry projection and clipping region while keeping the HUD centered. It can reveal geometry the game already submitted, but cannot restore objects culled by game logic. Prerecorded backgrounds retain their original 4:3 image; no new background artwork is generated.
+
+Optional motion interpolation inserts matched geometry midpoints for a 60 Hz presentation target. Videos retain their original cadence, and unmatched or discontinuous geometry falls back to the original frame. It does not change game logic, input or music timing. It can add up to about 17 ms of visual delay; leave it off if you prefer the original response or notice artifacts. It is not arbitrary-refresh interpolation.
 
 ## Physical timing measurement
 

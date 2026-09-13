@@ -12,7 +12,10 @@ This tracks the requested progression toward a polished PC port. It does not cla
 - Optional texture replacement through the existing renderer.
 - Experimental native mod ABI with compatibility checks, RAM access and lifecycle/frame callbacks (see NATIVE-MODS.md).
 - Source-only CI checks and settings persistence tests.
-- Portable host environment, monotonic clock, checkpoint replacement and SDL module loading; Windows/POSIX protected-texture write handling. This is infrastructure, not a completed Linux/macOS game port.
+- Portable host, Windows/POSIX texture protection, ARM64 floating-point control, full Linux/macOS build integration and native module ABI tests.
+- Frozen disc-import launcher and packaging with precompiled modules; players need no compiler or development tools.
+- Original, fit, crop, stretch and experimental expanded-geometry display modes.
+- Optional geometry midpoint interpolation with unchanged game logic and rhythm clocks.
 
 ## Completed acceptance
 
@@ -24,10 +27,9 @@ The clean four-DLL build, 64 native test passes, settings tests and matched repl
 - Complete hands-on calibration checks across a full manual playthrough; the timing patch and automated boundary tests are implemented.
 - Record physical controller-to-speaker latency and complete a manual playthrough.
 - Test on additional, less powerful PCs.
-- Implement game-aware widescreen, including backgrounds, HUD and clipping fixes.
-- Implement high-refresh interpolation while preserving game logic and rhythm timing.
+- Expand geometry coverage beyond game-side culling and improve background presentation without replacing original artwork.
+- Broaden interpolation scene coverage and evaluate refresh targets beyond 60 Hz.
 - Expand the initial native mod API with guest-function hooks, mod management and checkpoint state support.
-- Port Windows host interfaces and validate Linux/macOS builds on those platforms.
-- Provide installation without a compiler, using an appropriate asset-import/local-generation design.
+- Complete hands-on game, audio and controller acceptance on Linux/macOS hardware beyond CI build and module checks.
 
-The launcher and native host remain Windows development software. Tests on the development PC cannot establish other hardware/platform compatibility.
+Preview packages target Windows, Linux and macOS. Tests on the development PC cannot establish other hardware/platform compatibility; platform evidence is documented separately in PLATFORM-STATUS.md.

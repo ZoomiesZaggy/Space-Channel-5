@@ -1,16 +1,16 @@
-# Space Channel 5 — native Windows development port
+# Space Channel 5 — native desktop port
 
-An unofficial Windows x64 ahead-of-time (AOT) port project for the USA Dreamcast version of Space Channel 5. Gameplay runs through offline-generated native DLLs; the gameplay path does not use an SH4 interpreter or dynamic recompiler fallback. Flycast supplies device, rendering and audio components.
+An unofficial ahead-of-time (AOT) port project for the USA Dreamcast version of Space Channel 5. Gameplay runs through offline-generated native modules; the gameplay path does not use an SH4 interpreter or dynamic recompiler fallback. Flycast supplies device, rendering and audio components.
 
-**This repository contains source and build tools. You must supply your own original USA GDI and its tracks.** Disc images, extracted game code, generated game DLLs, compiled binaries and private saves are not included. This is a development project, not a ready-to-run download, and is not affiliated with Sega.
+**You must supply your own original USA GDI and its tracks.** Download packages contain the launcher, native host and precompiled translated modules. Players do not install Python, Git or a compiler: extract the package, run SpaceChannel5, select the GDI and choose Play. Original disc assets and private saves are not distributed. This unofficial preview is not affiliated with Sega. See [releases](https://github.com/ZoomiesZaggy/Space-Channel-5/releases) and [platform status](PLATFORM-STATUS.md) for available builds and validation limits.
 
 ## Status
 
 The local build completed all four reports, full credits and return to title in an uninterrupted assist-mode run with zero execution faults. Keyboard and Steam Controller operation were confirmed by the tester. The latest frontend passed matched opening and later-report replays and all 16 regression tests on each of four rebuilt modules. This is not a claim of a complete manual playthrough or exhaustive game-path coverage.
 
-Tested later-report scenes run at about 30 presented FPS. The latest startup test had zero audio underruns. Occasional long frame stalls remain; physical controller-to-speaker latency has not been measured. See [performance notes](PERFORMANCE-NOTES.md).
+Original presentation is approximately 30 FPS. Optional geometry interpolation adds intermediate presentations without advancing game logic, music or input. Display choices include original framing, widescreen fit, crop, stretch and experimental expanded geometry. Prerecorded backgrounds remain 4:3. Interpolation can add up to one 60 Hz interval of visual delay and is off by default. See [the player guide](PLAYER-GUIDE.md) and [performance notes](PERFORMANCE-NOTES.md).
 
-## Build on Windows
+## Developer build on Windows
 
 For a guided build, run `Configure-and-play.cmd`, select your disc, and choose **Build from my disc**. The pinned portable compiler downloads automatically with SHA-256 verification; Git and Python must already be installed. The launcher also saves input, audio and display preferences. See [the player guide](PLAYER-GUIDE.md) and [remaining release work](ROADMAP.md).
 
