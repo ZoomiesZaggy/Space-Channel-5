@@ -12,6 +12,8 @@ from build_paths import ROOT, WORK, compiler
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--gdi', required=True, type=pathlib.Path)
+    parser.add_argument('--module-dir', type=pathlib.Path, default=ROOT / 'build')
+    parser.add_argument('--exe', type=pathlib.Path, default=ROOT / 'build/sc5-native-dev.exe')
     args = parser.parse_args()
     env = {k: v for k, v in os.environ.items() if not k.startswith('SC5_')}
     env['PATH'] = str(compiler().parent) + os.pathsep + env['PATH']
@@ -23,7 +25,7 @@ def main():
         assert pathlib.Path(temporary).resolve().is_relative_to(WORK.resolve())
         env['SC5_RUNTIME_DATA'] = temporary + '/'
         for number in range(1, 5):
-            dll = ROOT / f'build/native-diff-round{number}.dll'
+            dll = args.module_dir.resolve() / f'native-diff-round{number}.dll'
             env['SC5_NATIVE_DLL'] = str(dll)
             test = WORK / 'flycast-build/flycast.exe'
             command = [str(test), '--gtest_filter=Sc5NativeDifferential.*-Sc5NativeDifferential.NativeExecutionUsesDeviceBus:Sc5NativeDifferential.OfflineReferenceCoverageOnly']
@@ -35,11 +37,11 @@ def main():
             if result.returncode or not passed: raise RuntimeError(log)
             item = dict(round=number, passed=int(passed[1]), skipped=int(skipped[1]) if skipped else 0, dll_sha256=hashlib.sha256(dll.read_bytes()).hexdigest())
             results.append(item); print(item, flush=True)
-        exe = ROOT / 'build/sc5-native-dev.exe'
+        exe = args.exe.resolve()
         command = [str(exe), '--gdi', str(args.gdi.resolve()), '--data', temporary, '--hidden', '--silent', '--budget', '1000000000']
         # Fresh boot starts in the round 1 module regardless of the previous test.
-        env['SC5_NATIVE_DLL'] = str(ROOT / 'build/native-diff-round1.dll')
-        env['SC5_MODULE_DLL_DIR'] = str(ROOT / 'build')
+        env['SC5_NATIVE_DLL'] = str(args.module_dir.resolve() / 'native-diff-round1.dll')
+        env['SC5_MODULE_DLL_DIR'] = str(args.module_dir.resolve())
         result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=180)
         (ROOT / 'reports/build-fresh-boot.txt').write_text(result.stdout + result.stderr)
         if result.returncode: raise RuntimeError(result.stdout + result.stderr)

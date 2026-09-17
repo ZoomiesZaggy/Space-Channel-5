@@ -290,6 +290,7 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
  u32 chunkLimit=100000;
  if(const char *value=std::getenv("SC5_CHUNK_INSTRUCTIONS"))chunkLimit=std::clamp<u32>(std::stoul(value),10000,1000000);
  const char *stopPath=std::getenv("SC5_STOP_FILE");uint64_t lastStopPoll=nativeMilliseconds();
+ uint64_t lastPerformanceReport=lastStopPoll,reportCycles=startTicks,reportFrames=0;
  auto switchModule=[&](u32 module){
   const char *directory=std::getenv("SC5_MODULE_DLL_DIR");nativeRequire(directory,"SC5_MODULE_DLL_DIR");
   nativeRequire(module>=1&&module<=4,"valid round module");
@@ -334,6 +335,13 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
   }
   if(completed==0)break;
   if(surface){surface->pump();inputHost->events();}
+  const auto performanceNow=nativeMilliseconds();
+  if(performanceNow-lastPerformanceReport>=5000){
+   const double seconds=(performanceNow-lastPerformanceReport)/1000.0;
+   std::cout<<"Performance game_speed="<<((sh4_sched_now64()-reportCycles)/200000000.0/seconds)
+    <<"x game_fps="<<((presentedFrames-reportFrames)/seconds)<<"\n";
+   lastPerformanceReport=performanceNow;reportCycles=sh4_sched_now64();reportFrames=presentedFrames;
+  }
   if(stopPath&&nativeMilliseconds()-lastStopPoll>=100){
    lastStopPoll=nativeMilliseconds();
    if(nativePathExists(stopPath)){std::cout<<"Native graceful stop requested by file="<<stopPath<<"\n";break;}

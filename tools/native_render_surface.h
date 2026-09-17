@@ -46,6 +46,8 @@ public:
   if(!context)throw std::runtime_error(SDL_GetError());
   std::cout<<"Render surface: OpenGL context created"<<std::endl;
   if(!gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress)||!GLAD_GL_VERSION_3_0)throw std::runtime_error("OpenGL 3 required");
+  std::cout<<"Graphics vendor="<<glGetString(GL_VENDOR)<<" renderer="<<glGetString(GL_RENDERER)
+    <<" version="<<glGetString(GL_VERSION)<<"\n";
   SDL_GL_SetSwapInterval(nativeNumber("SC5_VSYNC",0,0,1));SDL_GL_GetDrawableSize(surface,&settings.display.width,&settings.display.height);
   // No emulator UI: only the GL capabilities and native game renderer are needed.
   findGLVersion();
@@ -117,7 +119,7 @@ public:
   if(!std::getenv("SC5_LOG_PACING"))return;
   const Uint64 now=SDL_GetPerformanceCounter(),frequency=SDL_GetPerformanceFrequency();
   if(!firstPresent)firstPresent=now;
-  if(lastPresent && now-firstPresent>=frequency*5)frameIntervals.push_back((now-lastPresent)*1000.0/frequency);
+  if(lastPresent && now-firstPresent>=frequency*5 && frameIntervals.size()<1000000)frameIntervals.push_back((now-lastPresent)*1000.0/frequency);
   lastPresent=now;
  }
  void drawFrame(GlFramebuffer *frame){

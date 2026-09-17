@@ -1,12 +1,12 @@
 """Build the same generated AOT program in cached address-range objects.
 
-No instruction discovery or runtime translation occurs here. The emitted page
-bodies are copied verbatim, apart from external linkage between object files.
+No instruction discovery or runtime translation occurs here. Shared-state
+linkage and clock setup are optimized; instruction bodies and guards remain.
 """
 import argparse, concurrent.futures, hashlib, json, pathlib, re, subprocess, time, shutil
 from boot_probe import ROOT, RUNTIME
 
-def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=None, math_errno=True):
+def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=None, math_errno=True, profile_generate=False, profile_use=None):
     started=time.monotonic(); cc=str(pathlib.Path(shutil.which(str(cc)) or cc).resolve())
     target=subprocess.check_output([cc,"-dumpmachine"],text=True).strip()
     windows=any(word in target for word in ("mingw", "windows"))
@@ -29,8 +29,21 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
     for declaration in declarations:
         original='static '+declaration+';'; assert original in common, original
         external=re.sub(r'=[^,;]+','',declaration)
-        common=common.replace(original,'extern '+external+';')
-        definitions.append(declaration+';')
+        # COFF extern data otherwise goes through .refptr on every instruction.
+        # COMDAT data definitions still coalesce to one state per loaded module.
+        if windows:
+            common=common.replace(original,'__declspec(selectany) '+declaration+';')
+        else:
+            common=common.replace(original,'extern __attribute__((visibility("hidden"))) '+external+';')
+            definitions.append('__attribute__((visibility("hidden"))) '+declaration+';')
+    # The host configures callbacks between chunks. Keep the initialized clock
+    # in a page-local pointer, instead of reloading and checking three globals
+    # for every guest instruction. The startup/no-clock path is unchanged.
+    retire=common[common.index('static inline __attribute__((always_inline)) void native_retire'):common.index('\ntypedef int (*Service)')]
+    page_retire=retire.replace('void native_retire(u32 opcode,u32 slot,u32 count)', 'void native_page_retire(NativeFastClock *clock,u32 opcode,u32 slot,u32 count)')
+    page_retire=page_retire.replace(' if(!external_retire)return;\n NativeFastClock *clock=external_clock;\n if(!clock || clock->initial_mem_ops<3){external_retire(opcode,slot,count);return;}', ' if(!clock){native_retire(opcode,slot,count);return;}')
+    assert page_retire != retire and 'clock->initial_mem_ops' not in page_retire
+    common += '\n'+page_retire
     common=common.replace('static int translated(u32 physical);','int translated(u32 physical);')
     common=common.replace('../tools/',(ROOT/'tools').as_posix()+'/')
     header='#pragma once\n'+common
@@ -40,7 +53,10 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
     groups={}
     for page in pages:
         group=int(page[1],16)>>6
-        groups.setdefault(group,[]).append(page[0].replace('static int page_','int page_',1))
+        body=page[0].replace('static int page_','int page_',1)
+        body=body.replace('(u32 budget){', '(u32 budget){NativeFastClock *const page_clock=(external_retire && external_clock && external_clock->initial_mem_ops>=3)?external_clock:0;',1)
+        body=body.replace('native_retire(', 'native_page_retire(page_clock,')
+        groups.setdefault(group,[]).append(body)
     prototypes='\n'.join('int page_'+p[1]+'(u32 budget);' for p in pages)
     prefix=source[len(RUNTIME):pages[0].start()].replace('static int translated(', 'int translated(')
     suffix=source[pages[-1].end():]
@@ -50,18 +66,22 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
     units={'core':exports.replace('#include "sc5-boot-probe.c"',core)}
     units.update({f'pages_{group:x}':'#include "native-shared.h"\n'+''.join(bodies) for group,bodies in groups.items()})
     identity=subprocess.check_output([cc,'--version'],text=True)
+    if profile_generate and profile_use:raise ValueError('Choose profile generation or use')
+    profile_flags=['-fprofile-generate'] if profile_generate else ['-fprofile-use='+str(pathlib.Path(profile_use).resolve())] if profile_use else []
+    profile_digest=hashlib.sha256(pathlib.Path(profile_use).read_bytes()).hexdigest() if profile_use else ''
     dependency_hash=hashlib.sha256((ROOT/'tools/native_state.h').read_bytes()+(ROOT/'tools/native_fsca_table.inc').read_bytes()+(ROOT/'tools/native_fast_clock.h').read_bytes()+(ROOT/'tools/native_static_timing.h').read_bytes()+(ROOT/'tools/native_fp_control.h').read_bytes()).hexdigest()
     shared_cache=ROOT/'build/aot-shared-objects';shared_cache.mkdir(exist_ok=True)
     def compile_unit(item):
         name,body=item; path=directory/(name+'.c'); obj=directory/(name+'.obj'); stamp=directory/(name+'.sha256')
-        digest=hashlib.sha256((identity+target+opt+str(cpu)+str(math_errno)+'no-fp-contract-v1'+dependency_hash+header+body).encode()).hexdigest()
+        visibility='' if windows else '-fvisibility=hidden'
+        digest=hashlib.sha256((identity+target+opt+str(cpu)+str(math_errno)+str(profile_flags)+profile_digest+visibility+'no-fp-contract-v1'+dependency_hash+header+body).encode()).hexdigest()
         if obj.exists() and stamp.exists() and stamp.read_text()==digest:return str(obj),False
         cached=shared_cache/(digest+'.obj')
         if cached.exists():
             shutil.copy2(cached,obj);stamp.write_text(digest);return str(obj),False
         path.write_text(body)
-        command=[cc,'-O'+opt,'-std=c99','-ffp-contract=off','-c',str(path),'-o',str(obj)]
-        if not windows:command+=['-fPIC']
+        command=[cc,'-O'+opt,'-std=c99','-ffp-contract=off',*profile_flags,'-c',str(path),'-o',str(obj)]
+        if not windows:command+=['-fPIC',visibility]
         if cpu:command+=['-march='+cpu]
         if not math_errno:command+=['-fno-math-errno']
         result=subprocess.run(command,capture_output=True,text=True)
@@ -70,11 +90,11 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
         stamp.write_text(digest);print(f'Compiled {name}',flush=True);return str(obj),True
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
         results=list(pool.map(compile_unit,units.items()))
-    command=[cc,'-dynamiclib' if darwin else '-shared',*[obj for obj,changed in results],'-o',str(pathlib.Path(output).resolve())]
+    command=[cc,'-dynamiclib' if darwin else '-shared',*profile_flags,*[obj for obj,changed in results],'-o',str(pathlib.Path(output).resolve())]
     if not windows:command+=['-lm']
     result=subprocess.run(command,capture_output=True,text=True)
     if result.returncode:raise RuntimeError(result.stdout+result.stderr)
-    report=dict(source_sha256=hashlib.sha256(source.encode()).hexdigest(),pages=len(pages),objects=len(results),compiled_objects=sum(changed for obj,changed in results),seconds=time.monotonic()-started,cpu=cpu,math_errno=math_errno,command=command)
+    report=dict(source_sha256=hashlib.sha256(source.encode()).hexdigest(),pages=len(pages),objects=len(results),compiled_objects=sum(changed for obj,changed in results),seconds=time.monotonic()-started,cpu=cpu,math_errno=math_errno,profile_generate=profile_generate,profile_sha256=profile_digest or None,command=command)
     (ROOT/'reports/native-split-build.json').write_text(json.dumps(report,indent=2))
     print({k:v for k,v in report.items() if k!='command'},flush=True)
     return report
@@ -82,4 +102,5 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--cc',required=True);parser.add_argument('--output',required=True);parser.add_argument('--jobs',type=int,default=4);parser.add_argument('--opt',choices=['0','1','2'],default='1');parser.add_argument('--source');parser.add_argument('--object-dir')
     parser.add_argument('--cpu',choices=['x86-64','x86-64-v3']);parser.add_argument('--no-math-errno',action='store_true')
-    args=parser.parse_args();build(args.cc,args.output,args.jobs,args.opt,args.source,args.object_dir,args.cpu,not args.no_math_errno)
+    profile=parser.add_mutually_exclusive_group();profile.add_argument('--profile-generate',action='store_true');profile.add_argument('--profile-use',type=pathlib.Path)
+    args=parser.parse_args();build(args.cc,args.output,args.jobs,args.opt,args.source,args.object_dir,args.cpu,not args.no_math_errno,args.profile_generate,args.profile_use)

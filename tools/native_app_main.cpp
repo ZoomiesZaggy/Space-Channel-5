@@ -25,6 +25,7 @@ int main(int argc,char **argv){
   defaultEnv("SC5_INSTRUCTION_BUDGET","0");
   defaultEnv("SC5_VISIBLE","1");defaultEnv("SC5_PLAY_AUDIO","1");
   defaultEnv("SC5_DEFER_SILENT_AUDIO","1");
+  defaultEnv("SC5_LOG_AUDIO","1");defaultEnv("SC5_LOG_PACING","1");
   const std::map<std::string,const char*> options={{"--gdi","SC5_GDI"},{"--image","SC5_IMAGE"},{"--dll","SC5_NATIVE_DLL"},{"--data","SC5_RUNTIME_DATA"},
    {"--native-mod","SC5_NATIVE_MOD"},{"--budget","SC5_INSTRUCTION_BUDGET"},{"--input-script","SC5_INPUT_SCRIPT"},{"--frame","SC5_FRAME_OUTPUT"},{"--audio-capture","SC5_AUDIO_OUTPUT"},
    {"--checkpoint-load","SC5_CHECKPOINT_LOAD"},{"--checkpoint-save","SC5_CHECKPOINT_SAVE"},{"--stop-file","SC5_STOP_FILE"}};
@@ -46,6 +47,7 @@ int main(int argc,char **argv){
   std::filesystem::create_directories(std::getenv("SC5_RUNTIME_DATA"));
   NativeGameLock gameLock(std::getenv("SC5_RUNTIME_DATA"));
   std::cout<<"Space Channel 5 native development build\n";
+  std::cout<<"Host logical CPUs="<<SDL_GetCPUCount()<<" RAM_MiB="<<SDL_GetSystemRAM()<<"\n";
   auto result=runNativeDeviceHarness();
   if(result.fault){std::cerr<<"Native execution stopped at "<<std::hex<<result.pc<<" with unsupported-path fault "<<result.fault<<". Development remains unfinished.\n";return 2;}
   return 0;

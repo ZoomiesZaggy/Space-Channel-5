@@ -16,6 +16,12 @@ Settings are saved atomically to `userdata/settings.ini` and read by the native 
 
 Settings apply on the next launch. Launch through Steam to retain Steam Input's controller translation. The launcher does not modify Steam configuration.
 
+## Reporting slow gameplay or crackling audio
+
+Run the game from the launcher, play through the slow section, then close the game normally. Attach `userdata/last-launch.log` to your report along with your CPU, GPU, operating system, and whether you used a native Linux build or Proton on Steam Deck. Check the log for personal file paths before sharing it.
+
+The log records the graphics renderer, game speed and game-frame rate every five seconds, plus frame intervals and audio underruns on exit. Sustained `game_speed` below `1x` means the game is falling behind; increasing the audio buffer can cover brief stalls but cannot correct sustained slowdown. `game_fps` counts original game frames, including when optional motion interpolation is enabled. Try the original display mode with interpolation disabled when comparing performance.
+
 ## Display options
 
 Original 4:3 is the default. Widescreen fit preserves the whole picture with sidebars. Fill crops the top and bottom and can hide HUD elements. Stretch fills the window with altered proportions. Expanded 16:9 is experimental: it widens the geometry projection and clipping region while keeping the HUD centered. It can reveal geometry the game already submitted, but cannot restore objects culled by game logic. Prerecorded backgrounds retain their original 4:3 image; no new background artwork is generated.
