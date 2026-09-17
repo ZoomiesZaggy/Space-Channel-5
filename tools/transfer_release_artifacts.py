@@ -1,6 +1,6 @@
 """Transfer this performance update's validated platform artifacts to its draft."""
 from pathlib import Path, PurePosixPath
-import hashlib, json, os, posixpath, stat, subprocess, tarfile, zipfile
+import concurrent.futures, hashlib, json, os, posixpath, stat, subprocess, tarfile, zipfile
 
 def api(path):
     return json.loads(subprocess.check_output(['gh','api','repos/ZoomiesZaggy/Space-Channel-5'+path]))
@@ -71,10 +71,15 @@ expected={'SpaceChannel5-Linux-X64.tar.gz','SpaceChannel5-Linux-ARM64.tar.gz','S
 packages=[p for p in Path('artifacts').rglob('*') if p.is_file()]
 assert len(packages)==4 and {p.name for p in packages}==expected
 stage=Path('validated');stage.mkdir(exist_ok=True)
+validated=[]
 for package in packages:
     digest='sha256:'+verify(package)
     destination=stage/package.name.replace('SpaceChannel5-','SpaceChannel5-v0.1.0-preview.2-',1)
     package.rename(destination)
+    validated.append((destination,digest))
+
+def upload(item):
+    destination,digest=item
     current=api('/releases/'+str(release['id']))
     assert current['draft']
     existing=next((a for a in current['assets'] if a['name']==destination.name),None)
@@ -85,3 +90,6 @@ for package in packages:
     asset=next(a for a in api('/releases/'+str(release['id']))['assets'] if a['name']==destination.name)
     assert asset['digest']==digest and asset['size']==destination.stat().st_size
     print('Uploaded and verified',destination.name,digest,flush=True)
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+    list(pool.map(upload,validated))
