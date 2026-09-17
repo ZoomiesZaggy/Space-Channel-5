@@ -1,71 +1,29 @@
-name: Downloadable desktop builds
+name: Transfer validated desktop packages
 on:
   workflow_dispatch:
     inputs:
       modules_run_id:
-        description: 'Optional prior release-build run with compatible native modules'
-        required: false
-        default: ''
+        description: Successful desktop build run to publish
+        required: true
+        default: '35258152460'
 permissions:
-  contents: write # GitHub requires write access to read unpublished draft assets.
+  contents: write
   actions: read
 jobs:
-  package:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel]
-    runs-on: ${{ matrix.os }}
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ZoomiesZaggy/Space-Channel-5
+      BUILD_RUN_ID: ${{ inputs.modules_run_id }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Linux dependencies
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build clang libgl1-mesa-dev libasound2-dev libpulse-dev libudev-dev libusb-1.0-0-dev libcurl4-openssl-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxss-dev libxxf86vm-dev
-      - name: macOS dependencies
-        if: runner.os == 'macOS'
-        run: brew install ninja
-      - run: python -m pip install pyinstaller==6.22.2
-      - name: Fetch verified corresponding source
-        if: inputs.modules_run_id == ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          mkdir -p work
-          curl --fail --location --header "Authorization: Bearer $GH_TOKEN" --header "Accept: application/octet-stream" https://api.github.com/repos/ZoomiesZaggy/Space-Channel-5/releases/assets/560365252 --output work/native-aot-source.tar.gz
-      - run: python tools/test_native_host_os.py --compiler c++
-      - run: python tools/build_native_port.py --jobs 3
-      - name: Wait for reusable module build
-        if: inputs.modules_run_id != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          MODULE_RUN_ID: ${{ inputs.modules_run_id }}
-        run: gh run watch "$MODULE_RUN_ID" --exit-status --interval 60
+      - name: Wait for all four platform checks
+        run: gh run watch "$BUILD_RUN_ID" --exit-status --interval 60
       - uses: actions/download-artifact@v4
-        if: inputs.modules_run_id != ''
         with:
-          name: SpaceChannel5-${{ runner.os }}-${{ runner.arch }}
           run-id: ${{ inputs.modules_run_id }}
           github-token: ${{ github.token }}
-          path: work/reuse
-      - if: inputs.modules_run_id != ''
-        run: python tools/reuse_release_modules.py --directory work/reuse
-      - if: inputs.modules_run_id == ''
-        run: python tools/build_release_modules.py --archive work/native-aot-source.tar.gz --sha256 534e48bf347113b5c31c0270ab0434a0691b6b9e35114482a8af1a6273c2edd9 --jobs 2
-      - run: python tools/test_release_modules.py
-      - run: python tools/package_release.py --host-dir work/native-port-build --module-dir build --output work/SpaceChannel5
-      - name: Archive Linux build
-        if: runner.os == 'Linux'
-        run: python -c "import shutil; shutil.make_archive('SpaceChannel5-${{ runner.os }}-${{ runner.arch }}','gztar','work','SpaceChannel5')"
-      - name: Archive macOS app
-        if: runner.os == 'macOS'
-        run: ditto -c -k --sequesterRsrc --keepParent work/SpaceChannel5 SpaceChannel5-${{ runner.os }}-${{ runner.arch }}.zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: SpaceChannel5-${{ runner.os }}-${{ runner.arch }}
-          path: |
-            SpaceChannel5-*.tar.gz
-            SpaceChannel5-*.zip
+          path: artifacts
+      - name: Verify packages and upload to the unpublished release
+        run: python3 tools/transfer_release_artifacts.py
