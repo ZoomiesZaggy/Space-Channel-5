@@ -4,6 +4,7 @@
 /userdata/
 __pycache__/
 *.pyc
+*.profraw
 *.gdi
 *.cdi
 *.chd

@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--sha256',required=True)
     parser.add_argument('--compiler',default='clang')
     parser.add_argument('--jobs',type=int,default=2)
+    parser.add_argument('--profile-use',type=Path,help='Optional merged LLVM instrumentation profile')
     args=parser.parse_args()
     if hashlib.sha256(args.archive.read_bytes()).hexdigest()!=args.sha256:
         raise RuntimeError('Source archive checksum mismatch')
@@ -37,7 +38,7 @@ def main():
         path=source/f'sc5-boot-probe-round{number}.c'
         if hashlib.sha256(path.read_bytes()).hexdigest()!=manifest[path.name]:
             raise RuntimeError('Generated source checksum mismatch')
-        build(cc,output/f'native-diff-round{number}{suffix}',jobs=args.jobs,opt='2',source_path=path,object_dir=f'release-round{number}')
+        build(cc,output/f'native-diff-round{number}{suffix}',jobs=args.jobs,opt='2',source_path=path,object_dir=f'release-round{number}',profile_use=args.profile_use)
     shutil.copy2(output/f'native-diff-round1{suffix}',output/f'native-diff{suffix}')
 
 if __name__=='__main__':main()

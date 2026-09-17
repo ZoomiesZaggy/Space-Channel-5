@@ -3,7 +3,7 @@
 No instruction discovery or runtime translation occurs here. Shared-state
 linkage and clock setup are optimized; instruction bodies and guards remain.
 """
-import argparse, concurrent.futures, hashlib, json, pathlib, re, subprocess, time, shutil
+import argparse, concurrent.futures, gzip, hashlib, json, pathlib, re, subprocess, time, shutil
 from boot_probe import ROOT, RUNTIME
 
 def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=None, math_errno=True, profile_generate=False, profile_use=None):
@@ -66,7 +66,16 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
     units={'core':exports.replace('#include "sc5-boot-probe.c"',core)}
     units.update({f'pages_{group:x}':'#include "native-shared.h"\n'+''.join(bodies) for group,bodies in groups.items()})
     identity=subprocess.check_output([cc,'--version'],text=True)
+    shipped_profile=ROOT/'tools/profiles/windows-x64.profdata.gz'
+    if profile_use is None and not profile_generate and windows and target.startswith('x86_64') and opt=='2' and cpu is None and math_errno and shipped_profile.exists():
+        profile_use=shipped_profile
     if profile_generate and profile_use:raise ValueError('Choose profile generation or use')
+    if profile_use and pathlib.Path(profile_use).suffix=='.gz':
+        with gzip.open(profile_use,'rb') as handle:data=handle.read(64*1024*1024+1)
+        if len(data)>64*1024*1024:raise ValueError('LLVM profile exceeds 64 MiB')
+        profile_directory=ROOT/'build/profiles';profile_directory.mkdir(exist_ok=True)
+        profile_use=profile_directory/(hashlib.sha256(data).hexdigest()+'.profdata')
+        if not profile_use.exists():profile_use.write_bytes(data)
     profile_flags=['-fprofile-generate'] if profile_generate else ['-fprofile-use='+str(pathlib.Path(profile_use).resolve())] if profile_use else []
     profile_digest=hashlib.sha256(pathlib.Path(profile_use).read_bytes()).hexdigest() if profile_use else ''
     dependency_hash=hashlib.sha256((ROOT/'tools/native_state.h').read_bytes()+(ROOT/'tools/native_fsca_table.inc').read_bytes()+(ROOT/'tools/native_fast_clock.h').read_bytes()+(ROOT/'tools/native_static_timing.h').read_bytes()+(ROOT/'tools/native_fp_control.h').read_bytes()).hexdigest()
@@ -80,12 +89,16 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
         if cached.exists():
             shutil.copy2(cached,obj);stamp.write_text(digest);return str(obj),False
         path.write_text(body)
-        command=[cc,'-O'+opt,'-std=c99','-ffp-contract=off',*profile_flags,'-c',str(path),'-o',str(obj)]
+        # Relative source names keep internal-function profile keys portable
+        # across checkout paths and across round-specific object directories.
+        command=[cc,'-O'+opt,'-std=c99','-ffp-contract=off',*profile_flags,'-c',path.name if profile_flags else str(path),'-o',str(obj)]
         if not windows:command+=['-fPIC',visibility]
         if cpu:command+=['-march='+cpu]
         if not math_errno:command+=['-fno-math-errno']
-        result=subprocess.run(command,capture_output=True,text=True)
+        result=subprocess.run(command,capture_output=True,text=True,cwd=directory if profile_flags else None)
         if result.returncode:raise RuntimeError(result.stdout+result.stderr)
+        for line in result.stderr.splitlines():
+            if ': warning:' in line:print(line,flush=True)
         shutil.copy2(obj,cached)
         stamp.write_text(digest);print(f'Compiled {name}',flush=True);return str(obj),True
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
@@ -102,5 +115,5 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--cc',required=True);parser.add_argument('--output',required=True);parser.add_argument('--jobs',type=int,default=4);parser.add_argument('--opt',choices=['0','1','2'],default='1');parser.add_argument('--source');parser.add_argument('--object-dir')
     parser.add_argument('--cpu',choices=['x86-64','x86-64-v3']);parser.add_argument('--no-math-errno',action='store_true')
-    profile=parser.add_mutually_exclusive_group();profile.add_argument('--profile-generate',action='store_true');profile.add_argument('--profile-use',type=pathlib.Path)
+    profile=parser.add_mutually_exclusive_group();profile.add_argument('--profile-generate',action='store_true');profile.add_argument('--profile-use',type=pathlib.Path);profile.add_argument('--no-profile',dest='profile_use',action='store_const',const='')
     args=parser.parse_args();build(args.cc,args.output,args.jobs,args.opt,args.source,args.object_dir,args.cpu,not args.no_math_errno,args.profile_generate,args.profile_use)
