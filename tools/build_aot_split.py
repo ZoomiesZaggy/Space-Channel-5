@@ -67,7 +67,7 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
     units.update({f'pages_{group:x}':'#include "native-shared.h"\n'+''.join(bodies) for group,bodies in groups.items()})
     identity=subprocess.check_output([cc,'--version'],text=True)
     shipped_profile=ROOT/'tools/profiles/windows-x64.profdata.gz'
-    if profile_use is None and not profile_generate and windows and target.startswith('x86_64') and opt=='2' and cpu is None and math_errno and shipped_profile.exists():
+    if profile_use is None and not profile_generate and windows and target.startswith('x86_64') and 'clang version 23.' in identity and opt=='2' and cpu is None and math_errno and shipped_profile.exists():
         profile_use=shipped_profile
     if profile_generate and profile_use:raise ValueError('Choose profile generation or use')
     if profile_use and pathlib.Path(profile_use).suffix=='.gz':
