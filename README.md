@@ -8,7 +8,7 @@
 
 An unofficial native port of the USA Dreamcast release, with configurable controls, display options and compiler-free downloads.
 
-[![Download](https://img.shields.io/badge/DOWNLOAD-DESKTOP_PREVIEW-ff9254?style=for-the-badge)](https://github.com/ZoomiesZaggy/Space-Channel-5/releases/tag/v0.1.0-preview.1)
+[![Download](https://img.shields.io/badge/DOWNLOAD-DESKTOP_PREVIEW-ff9254?style=for-the-badge)](https://github.com/ZoomiesZaggy/Space-Channel-5/releases/tag/v0.1.0-preview.2)
 [![Guide](https://img.shields.io/badge/READ-PLAYER_GUIDE-9b86ed?style=for-the-badge)](PLAYER-GUIDE.md)
 [![Issues](https://img.shields.io/badge/HELP-REPORT_AN_ISSUE-394461?style=for-the-badge)](https://github.com/ZoomiesZaggy/Space-Channel-5/issues/new/choose)
 
@@ -129,7 +129,7 @@ If something goes wrong, [open an issue](https://github.com/ZoomiesZaggy/Space-C
 - [Contribute or report a bug](CONTRIBUTING.md)
 - [Platform implementation and testing](PLATFORM-STATUS.md)
 - [Native mod interface](NATIVE-MODS.md)
-- [Performance notes](PERFORMANCE-NOTES.md) and [release validation](DESKTOP-VALIDATION.md)
+- [Performance update](PERFORMANCE-UPDATE.md) and [release validation](DESKTOP-VALIDATION.md)
 - [Roadmap](ROADMAP.md)
 
 ## Credits and licensing
@@ -140,9 +140,9 @@ Flycast-derived components are **GPL-2.0-or-later**; Dreamcast-Forge retains its
 
 Space Channel 5 belongs to its respective rights holders. This is an unofficial project, not affiliated with or endorsed by Sega. Original game assets are supplied by the player and are not distributed here.
 
-[release]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/tag/v0.1.0-preview.1
-[windows]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.1/SpaceChannel5-v0.1.0-preview.1-Windows-X64.zip
-[linux-x64]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.1/SpaceChannel5-v0.1.0-preview.1-Linux-X64.tar.gz
-[linux-arm]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.1/SpaceChannel5-v0.1.0-preview.1-Linux-ARM64.tar.gz
-[mac-arm]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.1/SpaceChannel5-v0.1.0-preview.1-macOS-ARM64.zip
-[mac-x64]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.1/SpaceChannel5-v0.1.0-preview.1-macOS-X64.zip
+[release]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/tag/v0.1.0-preview.2
+[windows]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.2/SpaceChannel5-v0.1.0-preview.2-Windows-X64.zip
+[linux-x64]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.2/SpaceChannel5-v0.1.0-preview.2-Linux-X64.tar.gz
+[linux-arm]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.2/SpaceChannel5-v0.1.0-preview.2-Linux-ARM64.tar.gz
+[mac-arm]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.2/SpaceChannel5-v0.1.0-preview.2-macOS-ARM64.zip
+[mac-x64]: https://github.com/ZoomiesZaggy/Space-Channel-5/releases/download/v0.1.0-preview.2/SpaceChannel5-v0.1.0-preview.2-macOS-X64.zip

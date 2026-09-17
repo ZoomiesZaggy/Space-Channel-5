@@ -1,4 +1,4 @@
-Current release-preparation results and the newer isolated driver comparison are in [RELEASE-VALIDATION.md](RELEASE-VALIDATION.md). The measurements below describe the preceding frontend update.
+The latest CPU optimization and matched audio measurements are in [PERFORMANCE-UPDATE.md](PERFORMANCE-UPDATE.md). Earlier release-preparation results and the isolated driver comparison are in [RELEASE-VALIDATION.md](RELEASE-VALIDATION.md). The measurements below describe the preceding frontend update.
 
 # Audio, pacing and response measurements
 
