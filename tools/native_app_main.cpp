@@ -35,6 +35,7 @@ int main(int argc,char **argv){
     std::cout<<"Space Channel 5 native development build\nUsage: sc5-native-dev.exe --gdi <original USA .gdi> [--hidden] [--silent]\n"
      <<"Options: --native-mod <absolute DLL path> --image --dll --data --budget --input-script --frame --audio-capture --checkpoint-load --checkpoint-save --stop-file\n"
      <<"Creating the optional stop file requests a graceful stop and checkpoint save.\n"
+     <<"Set SC5_LOG_FRAME_TIME=1 to log average and 1% low presented FPS every five seconds and at exit.\n"
      <<"Normal play has no instruction limit; --budget sets a diagnostic limit (0 means unlimited).\n"
      <<"Controls: Enter=Start, arrows=direction pad, Z/Space=A, X/Backspace=B, A=X, S=Y; SDL gamepad supported.\n";return 0;
    }

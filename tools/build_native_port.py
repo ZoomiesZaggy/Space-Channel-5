@@ -6,6 +6,7 @@ import subprocess
 import sys
 import platform
 from build_paths import ROOT, WORK
+from release_optimizations import HOST_CMAKE_RELEASE
 
 REVISION = 'eddf2635867f0f16f64bebd3185db151c99c551c'
 
@@ -62,7 +63,7 @@ endif()
         sdk = subprocess.check_output(['xcrun', '--show-sdk-path'], text=True).strip()
         platform_flags.append(f'-DZLIB_LIBRARY={sdk}/usr/lib/libz.tbd')
         platform_flags.append(f'-DCMAKE_OSX_ARCHITECTURES={platform.machine()}')
-    run('cmake', '-S', source, '-B', build, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', *platform_flags,
+    run('cmake', '-S', source, '-B', build, '-G', 'Ninja', *HOST_CMAKE_RELEASE, *platform_flags,
         '-DENABLE_CTEST=ON', '-DBUILD_TESTING=ON', f'-DSC5_HOST_TOOLS={ROOT / "tools"}',
         '-DUSE_VULKAN=OFF', '-DUSE_DX9=OFF', '-DUSE_DX11=OFF', '-DUSE_BREAKPAD=OFF',
         '-DUSE_LUA=OFF', '-DUSE_OPENMP=OFF', '-DUSE_HOST_SDL=OFF', '-DUSE_HOST_LIBZIP=OFF',

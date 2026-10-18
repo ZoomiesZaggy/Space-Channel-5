@@ -342,8 +342,8 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
     <<"x game_fps="<<((presentedFrames-reportFrames)/seconds)<<"\n";
    lastPerformanceReport=performanceNow;reportCycles=sh4_sched_now64();reportFrames=presentedFrames;
   }
-  if(stopPath&&nativeMilliseconds()-lastStopPoll>=100){
-   lastStopPoll=nativeMilliseconds();
+  if(stopPath&&performanceNow-lastStopPoll>=100){
+   lastStopPoll=performanceNow;
    if(nativePathExists(stopPath)){std::cout<<"Native graceful stop requested by file="<<stopPath<<"\n";break;}
   }
  }

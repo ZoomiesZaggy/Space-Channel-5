@@ -6,6 +6,7 @@ native host's execution path exclusively calls sc5_run_chunk from its AOT DLL.
 """
 import argparse,ctypes,json,os,pathlib,subprocess,shutil
 from build_paths import ROOT, WORK, compiler as find_compiler
+from release_optimizations import ensure_optimized_compile_flags
 BUILD=WORK/'flycast-build'
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output',type=pathlib.Path,default=ROOT/'build/sc5-native-dev.exe',help='Optional staged executable path for rebuilding while the game is running')
@@ -27,6 +28,7 @@ for item in original[1:]:
     if item in ('-o','-c','-MT','-MF'):skip=True;continue
     if item=='-MD' or item.startswith('-DFLYCAST_TEST_FILES'):continue
     flags.append(item)
+ensure_optimized_compile_flags(flags)
 logs=[];objects=[]
 def run(command):
     result=subprocess.run(command,cwd=BUILD,env=env,capture_output=True,text=True)

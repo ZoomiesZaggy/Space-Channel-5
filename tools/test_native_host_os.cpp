@@ -2,6 +2,7 @@
 #include "native_host_os.h"
 #include "native_cpu_placement.h"
 #include "native_texture_write_watch.h"
+#include "native_frame_timing.h"
 #include "native_fp_control.h"
 #include <cstring>
 #pragma STDC FENV_ACCESS ON
@@ -24,6 +25,24 @@ static bool repair(unsigned char *address){
  if(mprotect(watched,pageSize,PROT_READ|PROT_WRITE))return false;
 #endif
  repaired=1;return true;
+}
+static void testFrameTiming(){
+ const double steady[]={33.333,33.333,33.333,33.333};
+ require(nativeAverageFps(steady,4)>29.9 && nativeAverageFps(steady,4)<30.1);
+ require(nativeOnePercentLowFps(steady,4)>29.9 && nativeOnePercentLowFps(steady,4)<30.1);
+ double mixed[100];
+ for(int i=0;i<99;i++)mixed[i]=20;
+ mixed[99]=100;
+ require(nativeOnePercentLowFps(mixed,100)>9.9 && nativeOnePercentLowFps(mixed,100)<10.1);
+ const double average=100*1000.0/(99*20.0+100);
+ require(nativeAverageFps(mixed,100)>average-0.01 && nativeAverageFps(mixed,100)<average+0.01);
+ require(mixed[0]==20);
+ double tail[200];
+ for(int i=0;i<198;i++)tail[i]=10;
+ tail[198]=tail[199]=50;
+ require(nativeOnePercentLowFps(tail,200)>19.9 && nativeOnePercentLowFps(tail,200)<20.1);
+ require(nativeAverageFps(nullptr,0)==0);
+ require(nativeOnePercentLowFps(nullptr,0)==0);
 }
 static void testWriteWatch(){
 #ifdef _WIN32
@@ -65,6 +84,7 @@ int main(int argc,char **argv){
   uint32_t bits;memcpy(&bits,&value,4);
   require(bits==(mode?0x3f800001u:0x3f800002u));require(flags==FE_INEXACT);
  }
+ testFrameTiming();
  testWriteWatch();
  nativeSetEnvironment("SC5_TEST_HOST_ENV","enabled");
  require(std::string(std::getenv("SC5_TEST_HOST_ENV"))=="enabled");
