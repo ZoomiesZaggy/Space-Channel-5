@@ -33,7 +33,7 @@ Each run starts from the same checkpoint and executes six billion native instruc
 
 PCM, RAM and full checkpoint bytes match across all five runs. Initial final-frame captures differ only in the rightmost pixel column: 43 channels for the 32 ms run and 552 for the driver runs, out of 921,600 RGB channels. Both threading-off captures and the restored automatic-threading capture are byte-identical to each other. This edge variation is recorded rather than described as exact image equality across all runs.
 
-The 64 ms buffer remains the default. The 32 ms option produced more underrun frames in this scene and is not a recommended default.
+The 32 ms option produced more underrun frames in this scene and is not a recommended default. The current default buffer is 100 ms.
 
 After the repeated comparison, the development PC's per-application NVIDIA profile was set to disable OpenGL threaded optimization for `sc5-native-dev.exe`. This is local to that PC; the launcher does not modify drivers. Other users can evaluate the per-program option in NVIDIA Control Panel and restore its default to undo it. No driver SDK/helper is distributed here.
 

@@ -6,12 +6,12 @@ Windows downloads keep imported files and `userdata` beside the launcher. macOS 
 
 Developers running the source launcher through `Configure-and-play.cmd` need Python and Git; **Build from my disc** downloads and verifies the portable compiler and builds locally.
 
-Settings are saved atomically to `userdata/settings.ini` and read by the native executable, including through Steam. Environment variables override saved settings; `--gdi` overrides the saved disc path. Diagnostic runners can set `SC5_IGNORE_SETTINGS=1`.
+Settings are saved atomically to `userdata/settings.ini` and read by the native executable, including through Steam. Environment variables override saved settings; `--gdi` overrides the saved disc path. A new settings file uses the defaults below. Values already saved in that file stay as they are. Diagnostic runners can set `SC5_IGNORE_SETTINGS=1`.
 
 - Volume: 0–100; zero mutes, 100 preserves the original mix.
-- Audio buffer: 32–128 ms, default 64. Smaller buffers provide less protection against stalls. This is not a rhythm-judgement offset.
+- Audio buffer: 32–128 ms, default 100. Smaller buffers provide less protection against stalls. This is not a rhythm-judgement offset.
 - Fullscreen, resizable window, and 1×–4× initial window size are configurable.
-- VSync is optional and off by default; it can add latency.
+- VSync is on by default and can add latency.
 - Keyboard and controller actions can be remapped independently. Default Space/Backspace aliases remain available unless reassigned.
 
 Settings apply on the next launch. Launch through Steam to retain Steam Input's controller translation. The launcher does not modify Steam configuration.
@@ -20,7 +20,7 @@ Settings apply on the next launch. Launch through Steam to retain Steam Input's 
 
 Run the game from the launcher, play through the slow section, then close the game normally. Attach `userdata/last-launch.log` to your report along with your CPU, GPU, operating system, and whether you used a native Linux build or Proton on Steam Deck. Check the log for personal file paths before sharing it.
 
-The log records the graphics renderer, game speed and game-frame rate every five seconds, plus frame intervals and audio underruns on exit. Sustained `game_speed` below `1x` means the game is falling behind; increasing the audio buffer can cover brief stalls but cannot correct sustained slowdown. `game_fps` counts original game frames, including when optional motion interpolation is enabled. Try the original display mode with interpolation disabled when comparing performance.
+The log records the graphics renderer, game speed and game-frame rate every five seconds. Set `SC5_LOG_PACING` to include frame intervals, and `SC5_LOG_AUDIO` to include audio underruns on exit. Sustained `game_speed` below `1x` means the game is falling behind; increasing the audio buffer can cover brief stalls but cannot correct sustained slowdown. `game_fps` counts original game frames, including when optional motion interpolation is enabled. Try the original display mode with interpolation disabled when comparing performance.
 
 ## Display options
 

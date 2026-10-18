@@ -7,7 +7,7 @@ This update reduces CPU overhead investigated after [issue #1](https://github.co
 - Clock setup is checked once per generated code page. Every instruction still accounts for its original cycles, and interrupt boundaries, instruction-byte guards and instruction budgets remain active.
 - Windows modules access their shared state directly through coalesced definitions. Linux/macOS module internals use hidden linkage, avoiding unnecessary symbol indirection.
 - Portable Windows x64 builds use a measured LLVM execution profile to optimize frequently executed paths. There is no new AVX2 requirement, fast-math setting, runtime compiler or change to game/music speed. The profile and reproduction instructions are in [tools/profiles](tools/profiles/README.md).
-- The launch log now records graphics details, game-speed measurements, frame intervals and audio underruns. See [reporting slow gameplay](PLAYER-GUIDE.md#reporting-slow-gameplay-or-crackling-audio).
+- The launch log records graphics details and game-speed measurements. Frame intervals and audio underruns are included when `SC5_LOG_PACING` and `SC5_LOG_AUDIO` are set. See [reporting slow gameplay](PLAYER-GUIDE.md#reporting-slow-gameplay-or-crackling-audio).
 
 ## Windows measurements
 
@@ -22,7 +22,7 @@ Two runs per version were alternated in A/B/B/A order. Unpaced runs generate aud
 
 Percentages compare the mean times of each pair. Typical unpaced frame intervals improved from 34.9–35.9 ms to 27.2–28.0 ms. The second-chiplet experiment is not a Steam Deck or Ryzen 5950X simulation.
 
-With normal audio-paced playback and the default 64 ms buffer:
+With normal audio-paced playback and a 64 ms buffer:
 
 | Measurement in the same Report 3 replay | Baseline | Optimized |
 |---|---:|---:|

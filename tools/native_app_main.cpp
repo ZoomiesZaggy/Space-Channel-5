@@ -25,7 +25,7 @@ int main(int argc,char **argv){
   defaultEnv("SC5_INSTRUCTION_BUDGET","0");
   defaultEnv("SC5_VISIBLE","1");defaultEnv("SC5_PLAY_AUDIO","1");
   defaultEnv("SC5_DEFER_SILENT_AUDIO","1");
-  defaultEnv("SC5_LOG_AUDIO","1");defaultEnv("SC5_LOG_PACING","1");
+  // SC5_LOG_AUDIO and SC5_LOG_PACING stay off unless the environment sets them. Presence enables both.
   const std::map<std::string,const char*> options={{"--gdi","SC5_GDI"},{"--image","SC5_IMAGE"},{"--dll","SC5_NATIVE_DLL"},{"--data","SC5_RUNTIME_DATA"},
    {"--native-mod","SC5_NATIVE_MOD"},{"--budget","SC5_INSTRUCTION_BUDGET"},{"--input-script","SC5_INPUT_SCRIPT"},{"--frame","SC5_FRAME_OUTPUT"},{"--audio-capture","SC5_AUDIO_OUTPUT"},
    {"--checkpoint-load","SC5_CHECKPOINT_LOAD"},{"--checkpoint-save","SC5_CHECKPOINT_SAVE"},{"--stop-file","SC5_STOP_FILE"}};

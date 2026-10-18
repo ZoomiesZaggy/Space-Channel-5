@@ -104,7 +104,7 @@ class Launcher:
         ttk.Label(audio, text='Music and sound volume').pack(anchor='w', pady=(12, 0))
         ttk.Spinbox(audio, from_=0, to=100, textvariable=self.vars['volume'], width=8).pack(anchor='w')
         ttk.Label(audio, text='Audio buffer in ms (smaller reduces buffering; increase if audio breaks up)').pack(anchor='w', pady=(8, 0))
-        ttk.Combobox(audio, textvariable=self.vars['audio_buffer_ms'], values=('32', '48', '64', '96', '128'), state='readonly', width=8).pack(anchor='w')
+        ttk.Combobox(audio, textvariable=self.vars['audio_buffer_ms'], values=('32', '48', '64', '96', '100', '128'), state='readonly', width=8).pack(anchor='w')
         ttk.Label(audio, text='Rhythm timing offset in ms (positive accepts later responses)').pack(anchor='w', pady=(8, 0))
         ttk.Spinbox(audio, from_=-250, to=250, increment=25, textvariable=self.vars['rhythm_offset_ms'], width=8).pack(anchor='w')
         ttk.Checkbutton(graphics, text='Fullscreen', variable=self.vars['fullscreen'], onvalue='1', offvalue='0').pack(anchor='w', pady=4)

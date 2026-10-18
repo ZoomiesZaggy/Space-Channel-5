@@ -48,7 +48,7 @@ public:
   if(!gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress)||!GLAD_GL_VERSION_3_0)throw std::runtime_error("OpenGL 3 required");
   std::cout<<"Graphics vendor="<<glGetString(GL_VENDOR)<<" renderer="<<glGetString(GL_RENDERER)
     <<" version="<<glGetString(GL_VERSION)<<"\n";
-  SDL_GL_SetSwapInterval(nativeNumber("SC5_VSYNC",0,0,1));SDL_GL_GetDrawableSize(surface,&settings.display.width,&settings.display.height);
+  SDL_GL_SetSwapInterval(nativeNumber("SC5_VSYNC",1,0,1));SDL_GL_GetDrawableSize(surface,&settings.display.width,&settings.display.height);
   // No emulator UI: only the GL capabilities and native game renderer are needed.
   findGLVersion();
   config::RendererType=RenderType::OpenGL;config::ThreadedRendering=false;

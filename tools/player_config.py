@@ -5,7 +5,7 @@ import pathlib
 ACTIONS = ('start', 'up', 'down', 'left', 'right', 'a', 'b', 'x', 'y')
 KEYS = ('Return', 'Up', 'Down', 'Left', 'Right', 'Space', 'Backspace', 'Tab', 'Left Shift', 'Right Shift') + tuple('ABCDEFGHIJKLMNOPQRSTUVWXYZ') + tuple('0123456789')
 PADS = ('start', 'back', 'a', 'b', 'x', 'y', 'dpup', 'dpdown', 'dpleft', 'dpright', 'leftshoulder', 'rightshoulder', 'leftstick', 'rightstick')
-DEFAULTS = dict(display_mode='0', motion_interpolation='0', gdi='', native_mod='', rhythm_offset_ms='0', volume='100', audio_buffer_ms='64', texture_packs='0', fullscreen='0', window_scale='1', vsync='0')
+DEFAULTS = dict(display_mode='0', motion_interpolation='0', gdi='', native_mod='', rhythm_offset_ms='0', volume='100', audio_buffer_ms='100', texture_packs='0', fullscreen='0', window_scale='1', vsync='1')
 DEFAULTS.update(zip(('key_' + a for a in ACTIONS), ('Return', 'Up', 'Down', 'Left', 'Right', 'Z', 'X', 'A', 'S')))
 DEFAULTS.update(zip(('pad_' + a for a in ACTIONS), ('start', 'dpup', 'dpdown', 'dpleft', 'dpright', 'a', 'b', 'x', 'y')))
 
