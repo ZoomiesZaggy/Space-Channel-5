@@ -199,7 +199,7 @@ static NativeRunResult runNativeDeviceHarness(void (*afterHalt)()=nullptr){
  config::AudioVolume.set(nativeNumber("SC5_VOLUME",100,0,100));
  if(config::AudioVolume.get()==100)config::AudioVolume.logarithmic_volume_scale=1.0f;
  else config::AudioVolume.calcDbPower();
- config::AudioBufferSize=nativeNumber("SC5_AUDIO_BUFFER_MS",64,32,128)*441/10;
+ config::AudioBufferSize=nativeNumber("SC5_AUDIO_BUFFER_MS",100,32,128)*441/10;
  const char *discPath=std::getenv("SC5_GDI");
  const char *framePath=std::getenv("SC5_FRAME_OUTPUT");
  std::unique_ptr<NativeRenderSurface> surface;

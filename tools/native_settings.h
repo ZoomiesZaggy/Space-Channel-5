@@ -36,7 +36,7 @@ inline void loadNativeSettings(const std::filesystem::path &path){
  nativeNumber("SC5_DISPLAY_MODE",0,0,4);nativeNumber("SC5_MOTION_INTERPOLATION",0,0,1);
  nativeNumber("SC5_RHYTHM_OFFSET_MS",0,-250,250);
  nativeNumber("SC5_VOLUME",100,0,100);nativeNumber("SC5_FULLSCREEN",0,0,1);
- nativeNumber("SC5_AUDIO_BUFFER_MS",64,32,128);
+ nativeNumber("SC5_AUDIO_BUFFER_MS",100,32,128);
  nativeNumber("SC5_TEXTURE_PACKS",0,0,1);
- nativeNumber("SC5_WINDOW_SCALE",1,1,4);nativeNumber("SC5_VSYNC",0,0,1);
+ nativeNumber("SC5_WINDOW_SCALE",1,1,4);nativeNumber("SC5_VSYNC",1,0,1);
 }
