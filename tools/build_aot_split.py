@@ -5,6 +5,7 @@ linkage and clock setup are optimized; instruction bodies and guards remain.
 """
 import argparse, concurrent.futures, gzip, hashlib, json, pathlib, re, subprocess, time, shutil
 from boot_probe import ROOT, RUNTIME
+from release_optimizations import module_cflags
 
 def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=None, math_errno=True, profile_generate=False, profile_use=None):
     started=time.monotonic(); cc=str(pathlib.Path(shutil.which(str(cc)) or cc).resolve())
@@ -83,7 +84,8 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
     def compile_unit(item):
         name,body=item; path=directory/(name+'.c'); obj=directory/(name+'.obj'); stamp=directory/(name+'.sha256')
         visibility='' if windows else '-fvisibility=hidden'
-        digest=hashlib.sha256((identity+target+opt+str(cpu)+str(math_errno)+str(profile_flags)+profile_digest+visibility+'no-fp-contract-v1'+dependency_hash+header+body).encode()).hexdigest()
+        cflags=module_cflags(opt)
+        digest=hashlib.sha256((identity+target+opt+str(cpu)+str(math_errno)+str(profile_flags)+profile_digest+visibility+'no-fp-contract-v1'+''.join(cflags)+dependency_hash+header+body).encode()).hexdigest()
         if obj.exists() and stamp.exists() and stamp.read_text()==digest:return str(obj),False
         cached=shared_cache/(digest+'.obj')
         if cached.exists():
@@ -91,7 +93,7 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
         path.write_text(body)
         # Relative source names keep internal-function profile keys portable
         # across checkout paths and across round-specific object directories.
-        command=[cc,'-O'+opt,'-std=c99','-ffp-contract=off',*profile_flags,'-c',path.name if profile_flags else str(path),'-o',str(obj)]
+        command=[cc,*cflags,'-std=c99','-ffp-contract=off',*profile_flags,'-c',path.name if profile_flags else str(path),'-o',str(obj)]
         if not windows:command+=['-fPIC',visibility]
         if cpu:command+=['-march='+cpu]
         if not math_errno:command+=['-fno-math-errno']
@@ -103,7 +105,7 @@ def build(cc, output, jobs=4, opt='1', source_path=None, object_dir=None, cpu=No
         stamp.write_text(digest);print(f'Compiled {name}',flush=True);return str(obj),True
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
         results=list(pool.map(compile_unit,units.items()))
-    command=[cc,'-dynamiclib' if darwin else '-shared',*profile_flags,*[obj for obj,changed in results],'-o',str(pathlib.Path(output).resolve())]
+    command=[cc,'-dynamiclib' if darwin else '-shared',*(['-O'+opt] if opt=='2' else []),*profile_flags,*[obj for obj,changed in results],'-o',str(pathlib.Path(output).resolve())]
     if not windows:command+=['-lm']
     result=subprocess.run(command,capture_output=True,text=True)
     if result.returncode:raise RuntimeError(result.stdout+result.stderr)

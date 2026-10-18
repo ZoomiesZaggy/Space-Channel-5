@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include "native_settings.h"
+#include "native_frame_timing.h"
 #include "native_motion_renderer.h"
 #include "rend/gles/glcache.h"
 
@@ -26,11 +27,18 @@ class NativeRenderSurface final : public GLGraphicsContext {
  int displayMode=0;
  unsigned midpointPresents=0,completedPresents=0;
  std::unique_ptr<NativeTextureWriteWatch> textureWriteHandler;
- Uint64 firstPresent=0,lastPresent=0;
- std::vector<double> frameIntervals;
+ Uint64 firstPresent=0,lastPresent=0,lastFrameReport=0;
+ bool logPacing=false,logPresent=false,logFrameTime=false;
+ std::vector<double> frameIntervals,frameTimes;
+ size_t frameWindowStart=0;
 
 public:
  NativeRenderSurface():GLGraphicsContext(nullptr,nullptr){
+  logPacing=std::getenv("SC5_LOG_PACING")!=nullptr;
+  logPresent=std::getenv("SC5_LOG_PRESENT")!=nullptr;
+  logFrameTime=std::getenv("SC5_LOG_FRAME_TIME")!=nullptr;
+  if(logPacing)frameIntervals.reserve(4096);
+  if(logFrameTime)frameTimes.reserve(4096);
   std::cout<<"Render surface: SDL initialization"<<std::endl;
   if(SDL_InitSubSystem(SDL_INIT_VIDEO)!=0)throw std::runtime_error(SDL_GetError());
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION,3);
@@ -74,6 +82,7 @@ public:
      <<" p95_ms="<<frameIntervals[(n-1)*95/100]<<" p99_ms="<<frameIntervals[(n-1)*99/100]
      <<" max_ms="<<frameIntervals.back()<<" over_50_ms="<<slow<<"\n";
   }
+  if(logFrameTime)emitFrameTiming("session",frameTimes.data(),frameTimes.size());
   rend_term_renderer();
   textureWriteHandler.reset();
   if(context)SDL_GL_DeleteContext(context);if(surface)SDL_DestroyWindow(surface);
@@ -93,7 +102,7 @@ public:
    if(!frame)frame=gl.ofbo2.ready?gl.ofbo2.framebuffer.get():gl.ofbo.framebuffer.get();
    if(frame){drawFrame(frame);available=true;}
   }else available=renderer->RenderLastFrame();
-  if(std::getenv("SC5_LOG_PRESENT")){
+  if(logPresent){
    static unsigned samples=0;
    if(samples++<10){
     GLint drawBuffer=0,readBuffer=0;glGetIntegerv(GL_DRAW_BUFFER,&drawBuffer);glGetIntegerv(GL_READ_BUFFER,&readBuffer);
@@ -104,7 +113,7 @@ public:
   }
   if(available)swap();
   if(available)recordPresentation();
-  if(std::getenv("SC5_LOG_PRESENT")){
+  if(logPresent){
    static unsigned frontSamples=0;
    if(frontSamples++<3){
     glReadBuffer(GL_FRONT);std::vector<u8> probe(640*480*4);glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,probe.data());
@@ -115,11 +124,28 @@ public:
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER,previousDraw);glBindFramebuffer(GL_READ_FRAMEBUFFER,previousRead);
   return available;
  }
+ void emitFrameTiming(const char *scope,const double *samples,size_t count){
+  if(!count)return;
+  std::cout<<"Native frame timing scope="<<scope<<" samples="<<count
+    <<" average_fps="<<nativeAverageFps(samples,count)
+    <<" one_percent_low_fps="<<nativeOnePercentLowFps(samples,count)<<"\n";
+ }
  void recordPresentation(){
-  if(!std::getenv("SC5_LOG_PACING"))return;
+  if(!logPacing && !logFrameTime)return;
   const Uint64 now=SDL_GetPerformanceCounter(),frequency=SDL_GetPerformanceFrequency();
   if(!firstPresent)firstPresent=now;
-  if(lastPresent && now-firstPresent>=frequency*5 && frameIntervals.size()<1000000)frameIntervals.push_back((now-lastPresent)*1000.0/frequency);
+  if(lastPresent){
+   const double interval=(now-lastPresent)*1000.0/frequency;
+   if(logPacing && now-firstPresent>=frequency*5 && frameIntervals.size()<1000000)frameIntervals.push_back(interval);
+   if(logFrameTime && frameTimes.size()<1000000)frameTimes.push_back(interval);
+  }
+  if(logFrameTime){
+   if(!lastFrameReport)lastFrameReport=now;
+   else if(now-lastFrameReport>=frequency*5){
+    if(frameTimes.size()>frameWindowStart)emitFrameTiming("window",frameTimes.data()+frameWindowStart,frameTimes.size()-frameWindowStart);
+    frameWindowStart=frameTimes.size();lastFrameReport=now;
+   }
+  }
   lastPresent=now;
  }
  void drawFrame(GlFramebuffer *frame){

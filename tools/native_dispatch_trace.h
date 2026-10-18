@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <iostream>
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
@@ -32,8 +33,10 @@ public:
  void record(u32 pc,const State &state){
   if(!first||pc<first||pc>=last)return;
   if(entries.size()==100000){++dropped;return;}
-  Entry entry{};entry.pc=pc;entry.pr=state.pr;entry.cycles=sh4_sched_now64();
-  memcpy(entry.regs,state.r,sizeof(entry.regs));memcpy(entry.fr,state.fr,sizeof(entry.fr));entries.push_back(entry);
+  entries.emplace_back();
+  Entry &entry=entries.back();
+  entry.pc=pc;entry.pr=state.pr;entry.cycles=sh4_sched_now64();
+  memcpy(entry.regs,state.r,sizeof(entry.regs));memcpy(entry.fr,state.fr,sizeof(entry.fr));
  }
  void finish(u64 origin){
   first=last=0;if(path.empty())return;

@@ -31,6 +31,7 @@ class NativeInput {
  u64 origin;
  u64 offset=0;
  size_t scriptCursor=0;
+ u64 nextControllerScan=0;
  std::thread latencyProbe;
  std::atomic<bool> stopProbe{false};
  std::atomic<u64> probeDownCounter{0};
@@ -118,11 +119,12 @@ public:
   if(controller)SDL_GameControllerClose(controller);if(controllerEnabled){SDL_StopTextInput();SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER);}
  }
  void events(){
-  SDL_Event event;while(SDL_PollEvent(&event)){
+  SDL_Event event;bool controllerChanged=false;while(SDL_PollEvent(&event)){
    if(event.type==SDL_QUIT)quit=true;
    else if(event.type==SDL_WINDOWEVENT&&event.window.event==SDL_WINDOWEVENT_FOCUS_LOST)keyboard=pendingKeyboard=textButtons=0;
    else if(event.type==SDL_KEYDOWN){keyboard|=eventKey(event.key);pendingKeyboard|=eventKey(event.key);if(logInput)std::cout<<"Native key down sym="<<event.key.keysym.sym<<" scan="<<event.key.keysym.scancode<<" mapped="<<eventKey(event.key)<<"\n";}
    else if(event.type==SDL_KEYUP)keyboard&=~eventKey(event.key);
+   else if(event.type==SDL_CONTROLLERDEVICEADDED||event.type==SDL_CONTROLLERDEVICEREMOVED||event.type==SDL_JOYDEVICEADDED)controllerChanged=true;
    else if(event.type==SDL_TEXTINPUT&&event.text.text[0]&&!event.text.text[1]){
     const unsigned char character=static_cast<unsigned char>(event.text.text[0]);
     const u32 button=key(character>='A'&&character<='Z'?character+('a'-'A'):character);
@@ -135,8 +137,13 @@ public:
    }
   }
   controllerButtons=0;
-  if(controller && !SDL_GameControllerGetAttached(controller)){SDL_GameControllerClose(controller);controller=nullptr;}
-  if(controllerEnabled && !controller)for(int j=0;j<SDL_NumJoysticks();j++)if(SDL_IsGameController(j)){controller=SDL_GameControllerOpen(j);if(controller){if(logInput)std::cout<<"Native controller connected="<<SDL_GameControllerName(controller)<<"\n";break;}}
+  if(controller && !SDL_GameControllerGetAttached(controller)){SDL_GameControllerClose(controller);controller=nullptr;controllerChanged=true;}
+  // Opening a controller enumerates devices. Do that on connect events and
+  // once a second, not on every execution chunk, while a pad is absent.
+  if(controllerEnabled && !controller && (controllerChanged || SDL_GetTicks64()>=nextControllerScan)){
+   nextControllerScan=SDL_GetTicks64()+1000;
+   for(int j=0;j<SDL_NumJoysticks();j++)if(SDL_IsGameController(j)){controller=SDL_GameControllerOpen(j);if(controller){if(logInput)std::cout<<"Native controller connected="<<SDL_GameControllerName(controller)<<"\n";break;}}
+  }
   if(controller){
    for(auto button:padBindings)if(SDL_GameControllerGetButton(controller,button.first))controllerButtons|=button.second;
    joyx[0]=SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX);joyy[0]=SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY);

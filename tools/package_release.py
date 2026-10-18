@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 from build_paths import ROOT, WORK
+from release_optimizations import assert_release_cache
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -28,6 +29,10 @@ def main():
     for file in [args.host_dir / executable, *modules]:
         if not file.is_file():
             raise SystemExit('Missing release input: ' + str(file))
+    cache = args.host_dir / 'CMakeCache.txt'
+    if not cache.is_file():
+        raise SystemExit('Host build is missing CMakeCache.txt')
+    assert_release_cache(cache.read_text(encoding='utf-8', errors='replace'))
     stage = WORK / 'release-freeze'
     subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onedir',
                     '--windowed', '--name', 'SpaceChannel5', '--distpath', str(stage / 'dist'),

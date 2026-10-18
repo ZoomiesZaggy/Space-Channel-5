@@ -22,6 +22,8 @@ Run the game from the launcher, play through the slow section, then close the ga
 
 The log records the graphics renderer, game speed and game-frame rate every five seconds. Set `SC5_LOG_PACING` to include frame intervals, and `SC5_LOG_AUDIO` to include audio underruns on exit. Sustained `game_speed` below `1x` means the game is falling behind; increasing the audio buffer can cover brief stalls but cannot correct sustained slowdown. `game_fps` counts original game frames, including when optional motion interpolation is enabled. Try the original display mode with interpolation disabled when comparing performance.
 
+Set `SC5_LOG_FRAME_TIME=1` before launch to also record presented-frame timing. Every five seconds, and again at exit, the log prints `average_fps` and `one_percent_low_fps` for the frames in that window and for the whole session. `one_percent_low_fps` is the rate from the mean of the slowest 1% of frame times, with at least one frame. The variable is off unless it is set. Up to one million intervals are kept.
+
 ## Display options
 
 Original 4:3 is the default. Widescreen fit preserves the whole picture with sidebars. Fill crops the top and bottom and can hide HUD elements. Stretch fills the window with altered proportions. Expanded 16:9 is experimental: it widens the geometry projection and clipping region while keeping the HUD centered. It can reveal geometry the game already submitted, but cannot restore objects culled by game logic. Prerecorded backgrounds retain their original 4:3 image; no new background artwork is generated.
